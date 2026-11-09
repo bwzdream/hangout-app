@@ -4,9 +4,9 @@
 
 One codebase for iOS, Android and web: Expo (React Native) + Expo Router + Supabase.
 
-| Home | Ping | Who's free | Hangout |
-|---|---|---|---|
-| ![](docs/screenshots/2-home.png) | ![](docs/screenshots/3-ping-story.png) | ![](docs/screenshots/4-whos-free.png) | ![](docs/screenshots/7-activity.png) |
+| Home | Hangout card | Calendar | Day timeline | Hangout |
+|---|---|---|---|---|
+| ![](docs/screenshots/2-home.png) | ![](docs/screenshots/2b-tilt.png) | ![](docs/screenshots/4-whos-free.png) | ![](docs/screenshots/4b-timeline.png) | ![](docs/screenshots/7-activity.png) |
 
 ## What's in v1
 

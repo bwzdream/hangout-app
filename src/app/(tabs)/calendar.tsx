@@ -1,183 +1,157 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 
-import { Avatar, Button, Card, Empty, Header, Loading, Row, Screen, T, displayName } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { DayTimeline, MonthCalendar, localDayStart, type DayMark, type TimelinePerson } from '@/components/calendar-views';
+import { ActivityCard } from '@/components/cards';
+import { paletteFor } from '@/components/liquid';
+import { Button, Card, Header, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
-import { getAvailability, getFriends } from '@/lib/api';
-import { freeWindows, intersect, type Interval } from '@/lib/availability';
-import { DAY_MS, formatTime } from '@/lib/time';
-import type { Profile } from '@/lib/types';
+import { getAvailability, getFriends, getProfiles, listActivitiesBetween } from '@/lib/api';
+import { freeWindows, intersect } from '@/lib/availability';
+import { DAY_MS } from '@/lib/time';
 import { useAuth } from '@/providers/auth';
 
-const DAY_START_H = 8; // timeline shows 8am → midnight
-const DAY_END_H = 24;
-
-function localDayStart(ms: number) {
-  const d = new Date(ms);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+function gridRange(month: Date) {
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const start = new Date(first.getFullYear(), first.getMonth(), 1 - first.getDay()).getTime();
+  return { start, end: start + 42 * DAY_MS };
 }
 
-function Timeline({ windows, overlap, dayStart }: { windows: Interval[]; overlap?: Interval[]; dayStart: number }) {
-  const from = dayStart + DAY_START_H * 3600000;
-  const span = (DAY_END_H - DAY_START_H) * 3600000;
-  const bar = (w: Interval, color: string) => {
-    const s = Math.max(w.start, from);
-    const e = Math.min(w.end, from + span);
-    if (e <= s) return null;
-    return (
-      <View
-        key={`${color}-${w.start}`}
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: `${((s - from) / span) * 100}%`,
-          width: `${((e - s) / span) * 100}%`,
-          backgroundColor: color,
-          borderRadius: 4,
-        }}
-      />
-    );
-  };
-  return (
-    <View style={{ height: 8, width: '100%', borderRadius: 4, backgroundColor: Colors.busy, overflow: 'hidden' }}>
-      {windows.map((w) => bar(w, Colors.free))}
-      {(overlap ?? []).map((w) => bar(w, Colors.accent))}
-    </View>
-  );
-}
-
-function DayPicker({ days, value, onChange }: { days: number[]; value: number; onChange: (d: number) => void }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-      {days.map((d) => {
-        const date = new Date(d);
-        const on = d === value;
-        return (
-          <Pressable
-            key={d}
-            onPress={() => onChange(d)}
-            style={{
-              width: 52,
-              paddingVertical: 10,
-              borderRadius: Radius.md,
-              alignItems: 'center',
-              gap: 2,
-              backgroundColor: on ? Colors.white : Colors.surface,
-            }}>
-            <T variant="overline" color={on ? Colors.onAccent : Colors.textTertiary} style={{ fontSize: 10 }}>
-              {date.toLocaleDateString(undefined, { weekday: 'short' })}
-            </T>
-            <T variant="heading" color={on ? Colors.onAccent : Colors.text}>
-              {date.getDate()}
-            </T>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-export default function WhosFree() {
+export default function CalendarTab() {
   const { session, profile } = useAuth();
   const meId = session?.user.id;
   const [now] = useState(() => Date.now());
-  const [days] = useState(() => Array.from({ length: 14 }, (_, i) => localDayStart(now) + i * DAY_MS));
-  const [day, setDay] = useState(days[0]);
+  const [month, setMonth] = useState(() => new Date(now));
+  const [selected, setSelected] = useState(() => localDayStart(now));
 
-  const { data, loading, refreshing, refresh } = useData(async () => {
+  const { data, loading, refreshing, refresh, reload } = useData(async () => {
     if (!meId) return null;
-    const range = { start: days[0], end: days[days.length - 1] + DAY_MS };
-    const friends = await getFriends();
+    const range = gridRange(month);
+    const [friends, activities] = await Promise.all([getFriends(), listActivitiesBetween(range.start, range.end)]);
     const availability = await getAvailability([meId, ...friends.friends.map((f) => f.id)], range);
-    return { friends: friends.friends, availability };
+    const memberIds = activities.flatMap((a) => [a.host_id, ...a.members.map((m) => m.user_id)]);
+    const profiles = { ...(await getProfiles(memberIds)), ...Object.fromEntries(friends.friends.map((f) => [f.id, f])) };
+    if (profile) profiles[profile.id] = profile;
+    return { friends: friends.friends, availability, activities, profiles, monthKey: `${month.getFullYear()}-${month.getMonth()}` };
   });
+
+  // Fetch again when switching months.
+  const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
+  useEffect(() => {
+    if (data && data.monthKey !== monthKey) reload();
+  }, [monthKey, data, reload]);
+
+  // Per-day marks for the month grid.
+  const marks = useMemo(() => {
+    const out: Record<number, DayMark> = {};
+    if (!data || !meId) return out;
+    const range = gridRange(month);
+    const me = data.availability[meId];
+    for (let day = range.start; day < range.end; day = localDayStart(day + DAY_MS + 3600000)) {
+      const dayRange = { start: Math.max(day, now), end: day + DAY_MS };
+      if (dayRange.end <= now) continue;
+      const mine = me ? freeWindows(me, dayRange) : [];
+      const together = mine.length > 0 && data.friends.some((f) => {
+        const theirs = data.availability[f.id];
+        return theirs ? intersect(mine, freeWindows(theirs, dayRange)).some((o) => o.end - o.start >= 3600000) : false;
+      });
+      const events = data.activities.filter((a) => localDayStart(new Date(a.starts_at).getTime()) === day).length;
+      out[day] = { events, free: mine.length > 0, together };
+    }
+    return out;
+  }, [data, meId, month, now]);
 
   if (loading && !data) return <Loading />;
 
-  const dayRange = { start: Math.max(day, now), end: day + DAY_MS };
+  const dayRange = { start: selected, end: selected + DAY_MS };
   const mine = data?.availability[meId ?? ''] ? freeWindows(data.availability[meId!], dayRange) : [];
+  const people: TimelinePerson[] = [
+    { profile, label: 'You', windows: mine, overlap: [] },
+    ...(data?.friends ?? [])
+      .map((f) => {
+        const windows = data?.availability[f.id] ? freeWindows(data.availability[f.id], dayRange) : [];
+        return { profile: f, label: displayName(f).split(' ')[0], windows, overlap: intersect(mine, windows) };
+      })
+      .sort((a, b) => b.overlap.length - a.overlap.length || b.windows.length - a.windows.length),
+  ];
+  const dayActivities = (data?.activities ?? []).filter((a) => localDayStart(new Date(a.starts_at).getTime()) === selected);
+  const events = dayActivities.map((a) => ({
+    id: a.id,
+    title: a.title,
+    start: new Date(a.starts_at).getTime(),
+    end: new Date(a.ends_at).getTime(),
+    color: paletteFor(a.id)[0],
+  }));
 
-  const rows: { profile: Profile; windows: Interval[]; overlap: Interval[] }[] = (data?.friends ?? [])
-    .map((f) => {
-      const windows = data?.availability[f.id] ? freeWindows(data.availability[f.id], dayRange) : [];
-      return { profile: f, windows, overlap: intersect(mine, windows) };
-    })
-    .sort((a, b) => b.overlap.length - a.overlap.length || b.windows.length - a.windows.length);
+  const shiftMonth = (delta: number) => {
+    const m = new Date(month.getFullYear(), month.getMonth() + delta, 1);
+    setMonth(m);
+    setSelected(m.getMonth() === new Date(now).getMonth() && m.getFullYear() === new Date(now).getFullYear() ? localDayStart(now) : m.getTime());
+  };
 
-  const monthLabel = new Date(day).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const selectedLabel = new Date(selected).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
-      <Header overline={monthLabel} title="Who's free" />
-
-      <DayPicker days={days} value={day} onChange={setDay} />
-
-      <Card style={{ gap: Spacing.lg }}>
-        <Row style={{ justifyContent: 'space-between', paddingLeft: 52 }}>
-          {['8a', '12p', '4p', '8p', '12a'].map((l) => (
-            <T key={l} variant="caption" color={Colors.textTertiary} style={{ fontSize: 11 }}>
-              {l}
-            </T>
-          ))}
-        </Row>
-
-        <Row gap={Spacing.md}>
-          <Avatar profile={profile} size={36} />
-          <View style={{ flex: 1, gap: 8 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <T variant="label">You</T>
-              {mine.length === 0 ? (
-                <Pressable onPress={() => router.push('/availability')}>
-                  <T variant="caption" color={Colors.text} style={{ fontWeight: '600' }}>
-                    Add free time
-                  </T>
-                </Pressable>
-              ) : null}
-            </Row>
-            <Timeline windows={mine} dayStart={day} />
-          </View>
-        </Row>
-
-        {rows.map(({ profile: p, windows, overlap }) => (
-          <Row key={p.id} gap={Spacing.md}>
-            <Avatar profile={p} size={36} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <T variant="label">{displayName(p)}</T>
-                {overlap.length > 0 ? (
-                  <T variant="caption" color={Colors.accent} style={{ fontWeight: '600' }}>
-                    {formatTime(overlap[0].start)} – {formatTime(overlap[0].end)}
-                  </T>
-                ) : null}
-              </Row>
-              <Timeline windows={windows} overlap={overlap} dayStart={day} />
-            </View>
+      <Header
+        overline={String(month.getFullYear())}
+        title={month.toLocaleDateString(undefined, { month: 'long' })}
+        right={
+          <Row>
+            <IconButton icon="chevronLeft" label="Previous month" onPress={() => shiftMonth(-1)} />
+            <IconButton icon="chevron" label="Next month" onPress={() => shiftMonth(1)} />
           </Row>
+        }
+      />
+
+      <View style={{ gap: Spacing.md }}>
+        <MonthCalendar month={month} selected={selected} onSelect={setSelected} marks={marks} />
+        <Row gap={Spacing.lg} style={{ justifyContent: 'center' }}>
+          <Row gap={6}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent }} />
+            <T variant="caption">Free with friends</T>
+          </Row>
+          <Row gap={6}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text }} />
+            <T variant="caption">Hangout</T>
+          </Row>
+        </Row>
+      </View>
+
+      <Section
+        title={selectedLabel}
+        action={
+          <Button
+            title="Plan"
+            icon="plus"
+            size="sm"
+            variant="white"
+            onPress={() =>
+              router.push({
+                pathname: '/activity/new',
+                params: { start: String(selected + 18 * 3600000), end: String(selected + 21 * 3600000) },
+              })
+            }
+          />
+        }>
+        {dayActivities.map((a) => (
+          <ActivityCard key={a.id} activity={a} profiles={data?.profiles ?? {}} meId={meId} height={200} />
         ))}
-
-        <Row gap={Spacing.lg} style={{ paddingTop: Spacing.xs }}>
-          <Row gap={6}>
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: Colors.free }} />
-            <T variant="caption">Free</T>
-          </Row>
-          <Row gap={6}>
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: Colors.accent }} />
-            <T variant="caption">Free with you</T>
-          </Row>
-        </Row>
-      </Card>
-
-      {data && data.friends.length === 0 ? (
-        <Empty icon="friends" title="No friends yet" body="Add friends to see their free time next to yours." />
-      ) : null}
-
-      <Row>
-        <Button title="Edit free time" variant="secondary" size="sm" onPress={() => router.push('/availability')} />
-        <Button title="New hangout" variant="white" size="sm" onPress={() => router.push('/activity/new')} />
-      </Row>
+        <Card style={{ paddingHorizontal: 10, paddingVertical: 12 }}>
+          <DayTimeline
+            day={selected}
+            people={people}
+            events={events}
+            now={now}
+            onPressEvent={(id) => router.push({ pathname: '/activity/[id]', params: { id } })}
+          />
+          {mine.length === 0 ? (
+            <Button title="Add free time" size="sm" variant="secondary" onPress={() => router.push('/availability')} style={{ alignSelf: 'flex-start' }} />
+          ) : null}
+        </Card>
+      </Section>
     </Screen>
   );
 }

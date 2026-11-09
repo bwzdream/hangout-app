@@ -198,6 +198,18 @@ export async function listUpcomingActivities(): Promise<ActivityWithPeople[]> {
   return rows;
 }
 
+export async function listActivitiesBetween(from: number, to: number): Promise<ActivityWithPeople[]> {
+  return check(
+    await supabase
+      .from('activities')
+      .select('*, members:activity_members(*)')
+      .lt('starts_at', new Date(to).toISOString())
+      .gt('ends_at', new Date(from).toISOString())
+      .order('starts_at')
+      .limit(200),
+  ) as ActivityWithPeople[];
+}
+
 export async function getActivity(id: string): Promise<ActivityWithPeople | null> {
   return check(
     await supabase.from('activities').select('*, members:activity_members(*)').eq('id', id).maybeSingle(),

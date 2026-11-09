@@ -20,6 +20,7 @@ const ICONS = {
   pin: { ios: 'mappin.and.ellipse', android: 'location_on' },
   notes: { ios: 'text.alignleft', android: 'notes' },
   chevron: { ios: 'chevron.right', android: 'chevron_right' },
+  chevronLeft: { ios: 'chevron.left', android: 'chevron_left' },
   search: { ios: 'magnifyingglass', android: 'search' },
   share: { ios: 'square.and.arrow.up', android: 'ios_share' },
   addPerson: { ios: 'person.badge.plus', android: 'person_add' },

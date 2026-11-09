@@ -2,8 +2,9 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, Text, View } from 'react-native';
 
-import { Avatar, Badge, Button, Card, DateBlock, Empty, List, ListRow, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Colors, Spacing } from '@/constants/theme';
+import { Glass, LiquidGradient, TiltCard, paletteFor } from '@/components/liquid';
+import { Avatar, Badge, Button, Card, Empty, List, ListRow, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Colors } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { confirm, errorMessage, notify } from '@/lib/alert';
 import { deleteActivity, getActivity, getProfiles, setRsvp } from '@/lib/api';
@@ -51,6 +52,7 @@ export default function ActivityDetail() {
   const going = activity.members.filter((m) => m.status === 'going');
   const maybe = activity.members.filter((m) => m.status === 'maybe');
   const past = new Date(activity.ends_at).getTime() < now;
+  const palette = paletteFor(activity.id);
 
   const rsvp = async (status: 'going' | 'maybe' | null) => {
     setBusy(true);
@@ -83,17 +85,38 @@ export default function ActivityDetail() {
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: '' }} />
 
-      <View style={{ gap: Spacing.lg }}>
-        <Row gap={Spacing.lg}>
-          <DateBlock date={activity.starts_at} size={64} />
-          <Text style={{ fontSize: 40 }}>{activity.emoji}</Text>
-        </Row>
-        <T variant="largeTitle">{activity.title}</T>
-        <Row>
-          <T variant="caption">Hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])}</T>
-          <Badge label={VISIBILITY_LABEL[activity.visibility]} tone="muted" />
-        </Row>
-      </View>
+      <TiltCard height={300} glow={palette[0]}>
+        <LiquidGradient palette={palette}>
+          <View style={{ flex: 1, padding: 12, justifyContent: 'space-between' }}>
+            <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Glass radius={16} style={{ width: 62, height: 66, alignItems: 'center', justifyContent: 'center' }}>
+                <T variant="overline" color="rgba(255,255,255,0.75)" style={{ fontSize: 10, lineHeight: 12 }}>
+                  {new Date(activity.starts_at).toLocaleDateString(undefined, { month: 'short' })}
+                </T>
+                <T variant="title" color="#fff" style={{ fontSize: 28, lineHeight: 32, fontWeight: '800' }}>
+                  {new Date(activity.starts_at).getDate()}
+                </T>
+              </Glass>
+              <Text style={{ fontSize: 44 }}>{activity.emoji}</Text>
+            </Row>
+            <Glass radius={22} style={{ padding: 16, gap: 6 }}>
+              <T variant="largeTitle" color="#fff" numberOfLines={2}>
+                {activity.title}
+              </T>
+              <Row>
+                <T variant="caption" color="rgba(255,255,255,0.8)">
+                  Hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])}
+                </T>
+                <Glass radius={999} style={{ paddingHorizontal: 10, paddingVertical: 3 }}>
+                  <T variant="caption" color="#fff" style={{ fontSize: 12, fontWeight: '700' }}>
+                    {VISIBILITY_LABEL[activity.visibility]}
+                  </T>
+                </Glass>
+              </Row>
+            </Glass>
+          </View>
+        </LiquidGradient>
+      </TiltCard>
 
       <List>
         <ListRow

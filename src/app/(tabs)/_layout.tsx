@@ -22,7 +22,7 @@ export default function TabLayout() {
         tabBarLabelStyle: { fontWeight: '600', fontSize: 11 },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('home') }} />
-      <Tabs.Screen name="calendar" options={{ title: 'Free', tabBarIcon: tabIcon('calendar') }} />
+      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: tabIcon('calendar') }} />
       <Tabs.Screen name="friends" options={{ title: 'Friends', tabBarIcon: tabIcon('friends') }} />
       <Tabs.Screen name="me" options={{ title: 'You', tabBarIcon: tabIcon('person') }} />
     </Tabs>

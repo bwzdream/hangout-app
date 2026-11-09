@@ -344,13 +344,23 @@ export function Avatar({ profile, size = 44, ring }: { profile?: Profile | null;
   );
 }
 
-export function AvatarStack({ profiles, size = 28, max = 5 }: { profiles: (Profile | undefined)[]; size?: number; max?: number }) {
+export function AvatarStack({
+  profiles,
+  size = 28,
+  max = 5,
+  borderColor = Colors.surface,
+}: {
+  profiles: (Profile | undefined)[];
+  size?: number;
+  max?: number;
+  borderColor?: string;
+}) {
   const shown = profiles.filter(Boolean).slice(0, max) as Profile[];
   const extra = profiles.length - shown.length;
   return (
     <Row gap={0}>
       {shown.map((p, i) => (
-        <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -size / 3, borderRadius: size, borderWidth: 2, borderColor: Colors.surface }}>
+        <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -size / 3, borderRadius: size, borderWidth: 2, borderColor }}>
           <Avatar profile={p} size={size} />
         </View>
       ))}
@@ -413,19 +423,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.lg + 4,
-    paddingTop: Spacing.lg,
-    gap: Spacing.xxl,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    gap: Spacing.xl + 4,
   },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.lg + 2,
+    padding: Spacing.lg,
     gap: Spacing.md,
   },
   pressed: { opacity: 0.7, transform: [{ scale: 0.985 }] },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.hairline, marginLeft: 60 },
-  listRow: { paddingHorizontal: Spacing.lg, paddingVertical: 13, minHeight: 56 },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.hairline, marginLeft: 58 },
+  listRow: { paddingHorizontal: 14, paddingVertical: 12, minHeight: 56 },
   listIcon: {
     width: 30,
     height: 30,
