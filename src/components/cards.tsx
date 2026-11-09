@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Colors, Spacing } from '@/constants/theme';
 import type { ActivityWithPeople } from '@/lib/api';
-import { formatRange, timeLeft } from '@/lib/time';
+import { formatTime, timeLeft } from '@/lib/time';
 import type { Ping, Profile } from '@/lib/types';
 
-import { Avatar, AvatarStack, Card, Row, T, displayName } from './ui';
+import { Icon } from './icon';
+import { Avatar, AvatarStack, Badge, Card, DateBlock, Row, T, displayName } from './ui';
 
 export function ActivityCard({
   activity,
@@ -18,54 +18,36 @@ export function ActivityCard({
   profiles: Record<string, Profile>;
   meId?: string;
 }) {
-  const theme = useTheme();
   const going = activity.members.filter((m) => m.status === 'going');
   const imIn = activity.members.some((m) => m.user_id === meId);
   const host = profiles[activity.host_id];
+  const weekday = new Date(activity.starts_at).toLocaleDateString(undefined, { weekday: 'short' });
   return (
     <Card onPress={() => router.push({ pathname: '/activity/[id]', params: { id: activity.id } })}>
-      <Row style={{ alignItems: 'flex-start' }} gap={Spacing.md}>
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 16,
-            backgroundColor: theme.accentSoft,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Text style={{ fontSize: 28 }}>{activity.emoji}</Text>
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <T variant="heading" numberOfLines={1}>
+      <Row gap={Spacing.lg} style={{ alignItems: 'flex-start' }}>
+        <DateBlock date={activity.starts_at} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <T variant="heading" numberOfLines={2}>
             {activity.title}
           </T>
-          <T variant="caption">{formatRange(activity.starts_at, activity.ends_at)}</T>
-          {activity.location ? (
-            <T variant="caption" numberOfLines={1}>
-              📍 {activity.location}
-            </T>
-          ) : null}
+          <T variant="caption">
+            {weekday} · {formatTime(activity.starts_at)}
+            {activity.location ? ` · ${activity.location}` : ''}
+          </T>
         </View>
-        {imIn ? (
-          <View style={{ backgroundColor: theme.successSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <T variant="caption" color={theme.success} style={{ fontWeight: '700' }}>
-              {activity.host_id === meId ? 'Hosting' : 'Going'}
-            </T>
-          </View>
-        ) : null}
+        {imIn ? <Badge label={activity.host_id === meId ? 'Hosting' : 'Going'} /> : null}
       </Row>
-      <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
-        <AvatarStack profiles={going.map((m) => profiles[m.user_id])} />
+      <Row style={{ justifyContent: 'space-between' }}>
+        <AvatarStack profiles={going.map((m) => profiles[m.user_id])} size={26} />
         <T variant="caption">
-          {going.length} going{host && activity.host_id !== meId ? ` · by ${displayName(host)}` : ''}
+          {going.length} going{host && activity.host_id !== meId ? ` · ${displayName(host)}` : ''}
         </T>
       </Row>
     </Card>
   );
 }
 
-/** Story-style row of active pings. Unseen pings get a bright ring. */
+/** Live pings, like stories. Unseen ones get an accent ring. */
 export function PingStories({
   pings,
   profiles,
@@ -77,25 +59,28 @@ export function PingStories({
   viewed: Set<string>;
   meId?: string;
 }) {
-  const theme = useTheme();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.lg, paddingVertical: 4 }}>
-      <Pressable onPress={() => router.push('/ping/new')} style={{ alignItems: 'center', gap: 6, width: 72 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: Spacing.lg, paddingRight: Spacing.lg }}
+      style={{ marginHorizontal: -Spacing.xl + 4, paddingLeft: Spacing.xl - 4 }}>
+      <Pressable onPress={() => router.push('/ping/new')} style={{ alignItems: 'center', gap: 8, width: 68 }}>
         <View
           style={{
             width: 64,
             height: 64,
             borderRadius: 32,
-            borderWidth: 2,
+            borderWidth: 1.5,
             borderStyle: 'dashed',
-            borderColor: theme.primary,
+            borderColor: Colors.textTertiary,
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-          <Text style={{ fontSize: 28, color: theme.primary }}>＋</Text>
+          <Icon name="plus" size={22} color={Colors.textSecondary} />
         </View>
         <T variant="caption" numberOfLines={1}>
-          I'm free
+          You
         </T>
       </Pressable>
       {pings.map((p) => {
@@ -105,14 +90,16 @@ export function PingStories({
           <Pressable
             key={p.id}
             onPress={() => router.push({ pathname: '/ping/[id]', params: { id: p.id } })}
-            style={{ alignItems: 'center', gap: 6, width: 72 }}>
-            <Avatar profile={profiles[p.sender_id]} size={64} ring={fresh ? theme.primary : theme.border} />
-            <T variant="caption" numberOfLines={1}>
-              {mine ? 'You' : displayName(profiles[p.sender_id])}
-            </T>
-            <T variant="caption" style={{ fontSize: 11, marginTop: -6 }} color={fresh ? theme.primary : theme.textSecondary}>
-              {timeLeft(p.expires_at)}
-            </T>
+            style={{ alignItems: 'center', gap: 8, width: 68 }}>
+            <Avatar profile={profiles[p.sender_id]} size={56} ring={fresh ? Colors.accent : Colors.surfaceRaised} />
+            <View style={{ alignItems: 'center' }}>
+              <T variant="caption" color={Colors.text} numberOfLines={1} style={{ fontWeight: '600' }}>
+                {mine ? 'You' : displayName(profiles[p.sender_id]).split(' ')[0]}
+              </T>
+              <T variant="caption" style={{ fontSize: 11, lineHeight: 14 }} color={fresh ? Colors.accent : Colors.textTertiary}>
+                {timeLeft(p.expires_at)}
+              </T>
+            </View>
           </Pressable>
         );
       })}

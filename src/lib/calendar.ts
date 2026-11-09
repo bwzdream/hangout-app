@@ -66,7 +66,7 @@ export async function syncDeviceCalendar(userId: string): Promise<{ blocks: numb
 export async function addToCalendar(event: CalendarEventInput): Promise<string> {
   if (Platform.OS === 'web') {
     downloadIcs(event);
-    return 'Downloaded calendar file 📅';
+    return 'Calendar file downloaded';
   }
 
   const perm = await Calendar.requestCalendarPermissions();
@@ -89,7 +89,7 @@ export async function addToCalendar(event: CalendarEventInput): Promise<string> 
     location: event.location || undefined,
     notes: event.notes || undefined,
   });
-  return 'Added to your calendar 📅';
+  return 'Added to your calendar';
 }
 
 function downloadIcs(event: CalendarEventInput) {

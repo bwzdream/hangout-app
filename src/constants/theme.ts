@@ -2,54 +2,36 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-/** Pingle palette: warm, playful, high-contrast in both themes. */
+/**
+ * Pingle is dark-first: near-black canvas, graphite surfaces, Apple system greys
+ * and a single bold accent (electric lime) for "free" and primary actions.
+ */
 export const Colors = {
-  light: {
-    text: '#1B1530',
-    textSecondary: '#6B6880',
-    background: '#FFF8F2',
-    card: '#FFFFFF',
-    cardAlt: '#F6EFFF',
-    border: '#EDE6F2',
-    primary: '#FF5A36',
-    primaryText: '#FFFFFF',
-    accent: '#7B5CFF',
-    accentSoft: '#EDE7FF',
-    success: '#16A34A',
-    successSoft: '#DCFCE7',
-    warning: '#F59E0B',
-    danger: '#E11D48',
-    free: '#22C55E',
-    busy: '#CBD5E1',
-  },
-  dark: {
-    text: '#F8F5FF',
-    textSecondary: '#A9A4BF',
-    background: '#120F1F',
-    card: '#1E1A2E',
-    cardAlt: '#29223F',
-    border: '#2E2844',
-    primary: '#FF6B4A',
-    primaryText: '#FFFFFF',
-    accent: '#9B85FF',
-    accentSoft: '#2C2550',
-    success: '#4ADE80',
-    successSoft: '#14361F',
-    warning: '#FBBF24',
-    danger: '#FB7185',
-    free: '#4ADE80',
-    busy: '#3B3654',
-  },
+  background: '#0A0A0B',
+  surface: '#161618',
+  surfaceRaised: '#1F1F22',
+  surfacePressed: '#2A2A2E',
+  hairline: 'rgba(255,255,255,0.08)',
+  text: '#F5F5F7',
+  textSecondary: '#8E8E93',
+  textTertiary: '#5C5C61',
+  accent: '#D4FF3F',
+  accentDim: 'rgba(212,255,63,0.16)',
+  onAccent: '#0A0A0B',
+  white: '#F5F5F7',
+  danger: '#FF453A',
+  free: 'rgba(212,255,63,0.38)',
+  busy: '#26262A',
 } as const;
 
-export type ThemeColors = { [K in keyof typeof Colors.light]: string };
+export type ThemeColors = typeof Colors;
 
 export const Fonts = Platform.select({
-  ios: { rounded: 'ui-rounded', sans: 'system-ui' },
-  web: { rounded: 'var(--font-rounded)', sans: 'var(--font-display)' },
-  default: { rounded: 'normal', sans: 'normal' },
+  ios: { display: 'system-ui', body: 'system-ui' },
+  web: { display: 'var(--font-display)', body: 'var(--font-display)' },
+  default: { display: 'sans-serif', body: 'sans-serif' },
 });
 
-export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
-export const Radius = { sm: 10, md: 16, lg: 24, pill: 999 } as const;
-export const MaxContentWidth = 640;
+export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 } as const;
+export const Radius = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 } as const;
+export const MaxContentWidth = 600;

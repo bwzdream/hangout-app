@@ -2,17 +2,15 @@ import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Colors, Radius, Spacing } from '@/constants/theme';
 import { GIF_PRESETS, STICKERS, gifsEnabled, searchGifs, type Gif } from '@/lib/gifs';
 
 import { Chip, Input, T } from './ui';
 
 export type GifChoice = { gifUrl: string | null; sticker: string | null };
 
-/** Pick a GIF (GIPHY) or, as a fallback, a big emoji sticker. */
+/** Pick a GIF (GIPHY) or a single emoji as the ping's cover. */
 export function GifPicker({ value, onChange }: { value: GifChoice; onChange: (v: GifChoice) => void }) {
-  const theme = useTheme();
   const [query, setQuery] = useState(GIF_PRESETS[0]);
   const [gifs, setGifs] = useState<Gif[]>([]);
 
@@ -24,29 +22,32 @@ export function GifPicker({ value, onChange }: { value: GifChoice; onChange: (v:
 
   return (
     <View style={{ gap: Spacing.md }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {STICKERS.map((s) => (
-          <Pressable
-            key={s}
-            onPress={() => onChange({ gifUrl: null, sticker: value.sticker === s ? null : s })}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: Radius.md,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: value.sticker === s ? theme.accentSoft : theme.card,
-              borderWidth: 2,
-              borderColor: value.sticker === s ? theme.accent : theme.border,
-            }}>
-            <Text style={{ fontSize: 28 }}>{s}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {STICKERS.map((s) => {
+          const on = value.sticker === s;
+          return (
+            <Pressable
+              key={s}
+              onPress={() => onChange({ gifUrl: null, sticker: on ? null : s })}
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: Radius.md,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: on ? Colors.surfacePressed : Colors.surface,
+                borderWidth: 1.5,
+                borderColor: on ? Colors.accent : 'transparent',
+              }}>
+              <Text style={{ fontSize: 24 }}>{s}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {gifsEnabled ? (
         <>
-          <Input value={query} onChangeText={setQuery} placeholder="Search GIFs…" autoCapitalize="none" />
+          <Input value={query} onChangeText={setQuery} placeholder="Search GIFs" autoCapitalize="none" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {GIF_PRESETS.map((p) => (
               <Chip key={p} label={p} selected={p === query} onPress={() => setQuery(p)} />
@@ -60,18 +61,18 @@ export function GifPicker({ value, onChange }: { value: GifChoice; onChange: (v:
                 style={{
                   borderRadius: Radius.md,
                   overflow: 'hidden',
-                  borderWidth: 3,
-                  borderColor: value.gifUrl === g.url ? theme.accent : 'transparent',
+                  borderWidth: 2,
+                  borderColor: value.gifUrl === g.url ? Colors.accent : 'transparent',
                 }}>
-                <Image source={{ uri: g.preview }} style={{ width: 130, height: 130 }} contentFit="cover" />
+                <Image source={{ uri: g.preview }} style={{ width: 120, height: 120 }} contentFit="cover" />
               </Pressable>
             ))}
           </ScrollView>
-          <T variant="caption">Powered by GIPHY</T>
+          <T variant="caption" color={Colors.textTertiary}>
+            Powered by GIPHY
+          </T>
         </>
-      ) : (
-        <T variant="caption">Add a GIPHY key to search GIFs — stickers work in the meantime ✨</T>
-      )}
+      ) : null}
     </View>
   );
 }

@@ -11,7 +11,7 @@ export type Gif = { id: string; url: string; preview: string; width: number; hei
 
 export const GIF_PRESETS = ['free to hang', 'lets go', 'party', 'coffee', 'pizza', 'dance', 'cute cat', 'yay'];
 
-export const STICKERS = ['🎉', '🍕', '☕️', '🍻', '🎳', '🏀', '🎮', '🎤', '🍜', '🌮', '🛼', '🌳', '🎬', '🧋', '🏖️', '🪩'];
+export const STICKERS = ['🍸', '🍜', '☕️', '🍕', '🎬', '🎳', '🏀', '🎮', '🎤', '🥾', '🏖️', '🌙'];
 
 export async function searchGifs(query: string, limit = 24): Promise<Gif[]> {
   if (!GIPHY_KEY) return [];

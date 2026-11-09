@@ -3,27 +3,18 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AudiencePicker, type Audience } from '@/components/audience-picker';
+import { Icon } from '@/components/icon';
 import { TimeRangePicker, defaultRange } from '@/components/time-picker';
-import { Avatar, Button, Card, Input, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Avatar, Button, Card, Chip, Input, List, ListRow, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
-import { useTheme } from '@/hooks/use-theme';
 import { errorMessage, notify } from '@/lib/alert';
 import { createActivity, getFriends, getMyCircles, sendPing } from '@/lib/api';
 
-const EMOJIS = ['🎉', '🍕', '☕️', '🍻', '🎳', '🏀', '🎮', '🎤', '🍜', '🌮', '🎬', '🥾', '🏖️', '🧋', '🛍️', '🎨'];
-
-const IDEAS = [
-  { emoji: '☕️', title: 'Coffee catch-up' },
-  { emoji: '🍜', title: 'Dinner' },
-  { emoji: '🎬', title: 'Movie night' },
-  { emoji: '🥾', title: 'Hike' },
-  { emoji: '🎮', title: 'Game night' },
-  { emoji: '🍻', title: 'Drinks' },
-];
+const COVERS = ['🍸', '🍜', '☕️', '🎬', '🎳', '🏀', '🎮', '🎤', '🥾', '🏖️', '🎨', '🎉'];
+const IDEAS = ['Dinner', 'Drinks', 'Coffee', 'Movie night', 'Hike', 'Game night'];
 
 export default function NewActivity() {
-  const theme = useTheme();
   const params = useLocalSearchParams<{ start?: string; end?: string; invite?: string; title?: string }>();
   const initialRange = useMemo(() => {
     const s = Number(params.start);
@@ -38,7 +29,7 @@ export default function NewActivity() {
   const initialInvite = useMemo(() => (params.invite ? params.invite.split(',').filter(Boolean) : []), [params.invite]);
 
   const [title, setTitle] = useState(params.title ?? '');
-  const [emoji, setEmoji] = useState('🎉');
+  const [emoji, setEmoji] = useState('🍸');
   const [location, setLocation] = useState('');
   const [details, setDetails] = useState('');
   const [range, setRange] = useState(initialRange);
@@ -55,8 +46,8 @@ export default function NewActivity() {
   });
 
   const save = async () => {
-    if (!title.trim()) return notify('Give it a name ✍️');
-    if (audience.visibility === 'invite' && invitees.length === 0) return notify('Pick who to invite 👯');
+    if (!title.trim()) return notify('Give your hangout a name');
+    if (audience.visibility === 'invite' && invitees.length === 0) return notify('Choose who to invite');
     setSaving(true);
     try {
       const activity = await createActivity(
@@ -75,7 +66,7 @@ export default function NewActivity() {
       // Pings go to all friends or a circle; invite-only plans stay quiet.
       if (alsoPing && audience.visibility !== 'invite') {
         await sendPing({
-          message: `${emoji} ${title.trim()}${location.trim() ? ` @ ${location.trim()}` : ''} — join me?`,
+          message: `${title.trim()}${location.trim() ? ` at ${location.trim()}` : ''}. Join?`,
           gif_url: null,
           sticker: emoji,
           starts_at: activity.starts_at,
@@ -90,7 +81,7 @@ export default function NewActivity() {
       }
       router.replace({ pathname: '/activity/[id]', params: { id: activity.id } });
     } catch (e) {
-      notify("Couldn't create", errorMessage(e));
+      notify("Couldn't create hangout", errorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -98,36 +89,36 @@ export default function NewActivity() {
 
   return (
     <Screen edges={['bottom']}>
-      <Section title="What's the plan?">
+      <View style={{ gap: Spacing.md }}>
+        <Input
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Name your hangout"
+          maxLength={80}
+          style={{ fontSize: 24, fontWeight: '700', paddingVertical: 18 }}
+        />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {IDEAS.map((i) => (
-            <Button
-              key={i.title}
-              title={`${i.emoji} ${i.title}`}
-              size="sm"
-              variant={title === i.title ? 'accent' : 'secondary'}
-              onPress={() => {
-                setTitle(i.title);
-                setEmoji(i.emoji);
-              }}
-            />
+            <Chip key={i} label={i} selected={title === i} onPress={() => setTitle(i)} />
           ))}
         </View>
-        <Input value={title} onChangeText={setTitle} placeholder="Tacos at Lupe's" maxLength={80} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {EMOJIS.map((e) => (
+      </View>
+
+      <Section title="Cover">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {COVERS.map((e) => (
             <Pressable
               key={e}
               onPress={() => setEmoji(e)}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: Radius.sm,
+                width: 48,
+                height: 48,
+                borderRadius: Radius.md,
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: e === emoji ? theme.accent : 'transparent',
-                backgroundColor: theme.card,
+                backgroundColor: e === emoji ? Colors.surfacePressed : Colors.surface,
+                borderWidth: 1.5,
+                borderColor: e === emoji ? Colors.accent : 'transparent',
               }}>
               <Text style={{ fontSize: 22 }}>{e}</Text>
             </Pressable>
@@ -135,48 +126,70 @@ export default function NewActivity() {
         </View>
       </Section>
 
-      <Section title="When">
-        <Card>
-          <TimeRangePicker value={range} onChange={setRange} />
-        </Card>
-      </Section>
+      <Card>
+        <TimeRangePicker value={range} onChange={setRange} />
+      </Card>
 
-      <Input label="📍 Where" value={location} onChangeText={setLocation} placeholder="Address or place name" />
-      <Input label="📝 Details" value={details} onChangeText={setDetails} placeholder="Bring snacks! Meet by the fountain." multiline />
+      <View style={{ gap: Spacing.lg }}>
+        <Input label="Location" value={location} onChangeText={setLocation} placeholder="Add a place or address" />
+        <Input label="Details" value={details} onChangeText={setDetails} placeholder="Anything people should know" multiline />
+      </View>
 
-      <Section title="Who can see this?">
+      <Section title="Who can see it">
         <AudiencePicker value={audience} onChange={setAudience} circles={data?.circles ?? []} allowInvite />
         {audience.visibility === 'invite' ? (
-          <Card style={{ gap: Spacing.sm }}>
+          <List>
             {(data?.friends ?? []).map((f) => {
               const on = invitees.includes(f.id);
               return (
-                <Pressable
+                <ListRow
                   key={f.id}
-                  onPress={() => setInvitees((list) => (on ? list.filter((x) => x !== f.id) : [...list, f.id]))}>
-                  <Row gap={Spacing.md}>
-                    <Avatar profile={f} size={36} />
-                    <T variant="label" style={{ flex: 1 }}>
-                      {displayName(f)}
-                    </T>
-                    <Text style={{ fontSize: 20 }}>{on ? '✅' : '⬜️'}</Text>
-                  </Row>
-                </Pressable>
+                  title={displayName(f)}
+                  left={<Avatar profile={f} size={32} />}
+                  chevron={false}
+                  onPress={() => setInvitees((list) => (on ? list.filter((x) => x !== f.id) : [...list, f.id]))}
+                  right={
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: on ? Colors.accent : 'transparent',
+                        borderWidth: on ? 0 : 1.5,
+                        borderColor: Colors.textTertiary,
+                      }}>
+                      {on ? <Icon name="check" size={14} color={Colors.onAccent} /> : null}
+                    </View>
+                  }
+                />
               );
             })}
-            {data?.friends.length === 0 ? <T variant="caption">Add friends first 🙂</T> : null}
-          </Card>
+          </List>
         ) : (
           <Pressable onPress={() => setAlsoPing((v) => !v)}>
             <Row>
-              <Text style={{ fontSize: 20 }}>{alsoPing ? '✅' : '⬜️'}</Text>
-              <T variant="label">Ping them so they know 📣</T>
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: alsoPing ? Colors.accent : 'transparent',
+                  borderWidth: alsoPing ? 0 : 1.5,
+                  borderColor: Colors.textTertiary,
+                }}>
+                {alsoPing ? <Icon name="check" size={13} color={Colors.onAccent} /> : null}
+              </View>
+              <T variant="label">Notify them with a ping</T>
             </Row>
           </Pressable>
         )}
       </Section>
 
-      <Button title="Post hangout" icon="🚀" size="lg" onPress={save} loading={saving} />
+      <Button title="Create hangout" size="lg" variant="white" onPress={save} loading={saving} />
     </Screen>
   );
 }

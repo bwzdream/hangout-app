@@ -1,8 +1,7 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SetupNeeded } from '@/components/setup-needed';
@@ -12,10 +11,20 @@ import { AuthProvider, useAuth } from '@/providers/auth';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: Colors.accent,
+    background: Colors.background,
+    card: Colors.background,
+    text: Colors.text,
+    border: Colors.hairline,
+  },
+};
+
 function RootNavigator() {
   const { session, loading } = useAuth();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync().catch(() => {});
@@ -28,10 +37,10 @@ function RootNavigator() {
     <Stack
       screenOptions={{
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
+        headerStyle: { backgroundColor: Colors.background },
+        headerTintColor: Colors.text,
         headerTitleStyle: { fontWeight: '700' },
-        contentStyle: { backgroundColor: colors.background },
+        contentStyle: { backgroundColor: Colors.background },
         headerBackButtonDisplayMode: 'minimal',
       }}>
       <Stack.Protected guard={!signedIn}>
@@ -40,11 +49,11 @@ function RootNavigator() {
 
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ping/new" options={{ presentation: 'modal', title: "I'm free! 🙌" }} />
+        <Stack.Screen name="ping/new" options={{ presentation: 'modal', title: 'New ping' }} />
         <Stack.Screen name="ping/[id]" options={{ presentation: 'fullScreenModal', headerShown: false }} />
-        <Stack.Screen name="activity/new" options={{ presentation: 'modal', title: 'Plan a hangout' }} />
+        <Stack.Screen name="activity/new" options={{ presentation: 'modal', title: 'New hangout' }} />
         <Stack.Screen name="activity/[id]" options={{ title: '' }} />
-        <Stack.Screen name="availability" options={{ title: 'My free time' }} />
+        <Stack.Screen name="availability" options={{ title: 'Free time' }} />
         <Stack.Screen name="circles" options={{ title: 'Circles' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal', title: 'Edit profile' }} />
       </Stack.Protected>
@@ -53,15 +62,10 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
-  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-
   return (
-    <SafeAreaProvider>
-      <ThemeProvider
-        value={{ ...base, colors: { ...base.colors, primary: colors.primary, background: colors.background, card: colors.background } }}>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+    <SafeAreaProvider style={{ backgroundColor: Colors.background }}>
+      <ThemeProvider value={navTheme}>
+        <StatusBar style="light" />
         {isSupabaseConfigured ? (
           <AuthProvider>
             <RootNavigator />

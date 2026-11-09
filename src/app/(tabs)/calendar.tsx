@@ -2,13 +2,12 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { Avatar, Button, Card, Chip, Empty, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Avatar, Button, Card, Empty, Header, Loading, Row, Screen, T, displayName } from '@/components/ui';
+import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
-import { useTheme } from '@/hooks/use-theme';
 import { getAvailability, getFriends } from '@/lib/api';
 import { freeWindows, intersect, type Interval } from '@/lib/availability';
-import { DAY_MS, formatDay, formatTime } from '@/lib/time';
+import { DAY_MS, formatTime } from '@/lib/time';
 import type { Profile } from '@/lib/types';
 import { useAuth } from '@/providers/auth';
 
@@ -20,42 +19,72 @@ function localDayStart(ms: number) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-function Timeline({ windows, dayStart, highlight }: { windows: Interval[]; dayStart: number; highlight?: boolean }) {
-  const theme = useTheme();
+function Timeline({ windows, overlap, dayStart }: { windows: Interval[]; overlap?: Interval[]; dayStart: number }) {
   const from = dayStart + DAY_START_H * 3600000;
-  const to = dayStart + DAY_END_H * 3600000;
-  const span = to - from;
+  const span = (DAY_END_H - DAY_START_H) * 3600000;
+  const bar = (w: Interval, color: string) => {
+    const s = Math.max(w.start, from);
+    const e = Math.min(w.end, from + span);
+    if (e <= s) return null;
+    return (
+      <View
+        key={`${color}-${w.start}`}
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: `${((s - from) / span) * 100}%`,
+          width: `${((e - s) / span) * 100}%`,
+          backgroundColor: color,
+          borderRadius: 4,
+        }}
+      />
+    );
+  };
   return (
-    <View style={{ height: 14, width: '100%', borderRadius: 7, backgroundColor: theme.busy, overflow: 'hidden' }}>
-      {windows.map((w) => {
-        const s = Math.max(w.start, from);
-        const e = Math.min(w.end, to);
-        if (e <= s) return null;
-        return (
-          <View
-            key={w.start}
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: `${((s - from) / span) * 100}%`,
-              width: `${((e - s) / span) * 100}%`,
-              backgroundColor: highlight ? theme.primary : theme.free,
-              borderRadius: 7,
-            }}
-          />
-        );
-      })}
+    <View style={{ height: 8, width: '100%', borderRadius: 4, backgroundColor: Colors.busy, overflow: 'hidden' }}>
+      {windows.map((w) => bar(w, Colors.free))}
+      {(overlap ?? []).map((w) => bar(w, Colors.accent))}
     </View>
   );
 }
 
+function DayPicker({ days, value, onChange }: { days: number[]; value: number; onChange: (d: number) => void }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      {days.map((d) => {
+        const date = new Date(d);
+        const on = d === value;
+        return (
+          <Pressable
+            key={d}
+            onPress={() => onChange(d)}
+            style={{
+              width: 52,
+              paddingVertical: 10,
+              borderRadius: Radius.md,
+              alignItems: 'center',
+              gap: 2,
+              backgroundColor: on ? Colors.white : Colors.surface,
+            }}>
+            <T variant="overline" color={on ? Colors.onAccent : Colors.textTertiary} style={{ fontSize: 10 }}>
+              {date.toLocaleDateString(undefined, { weekday: 'short' })}
+            </T>
+            <T variant="heading" color={on ? Colors.onAccent : Colors.text}>
+              {date.getDate()}
+            </T>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 export default function WhosFree() {
-  const theme = useTheme();
   const { session, profile } = useAuth();
   const meId = session?.user.id;
   const [now] = useState(() => Date.now());
-  const [days] = useState(() => Array.from({ length: 7 }, (_, i) => localDayStart(now) + i * DAY_MS));
+  const [days] = useState(() => Array.from({ length: 14 }, (_, i) => localDayStart(now) + i * DAY_MS));
   const [day, setDay] = useState(days[0]);
 
   const { data, loading, refreshing, refresh } = useData(async () => {
@@ -63,7 +92,7 @@ export default function WhosFree() {
     const range = { start: days[0], end: days[days.length - 1] + DAY_MS };
     const friends = await getFriends();
     const availability = await getAvailability([meId, ...friends.friends.map((f) => f.id)], range);
-    return { friends: friends.friends, availability, range };
+    return { friends: friends.friends, availability };
   });
 
   if (loading && !data) return <Loading />;
@@ -78,86 +107,77 @@ export default function WhosFree() {
     })
     .sort((a, b) => b.overlap.length - a.overlap.length || b.windows.length - a.windows.length);
 
+  const monthLabel = new Date(day).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
-      <T variant="title">Who's free 📅</T>
+      <Header overline={monthLabel} title="Who's free" />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {days.map((d) => (
-          <Chip key={d} label={formatDay(d)} selected={d === day} onPress={() => setDay(d)} />
-        ))}
-      </ScrollView>
+      <DayPicker days={days} value={day} onChange={setDay} />
 
-      <Card>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <T variant="caption">8am</T>
-          <T variant="caption">noon</T>
-          <T variant="caption">4pm</T>
-          <T variant="caption">8pm</T>
-          <T variant="caption">12am</T>
+      <Card style={{ gap: Spacing.lg }}>
+        <Row style={{ justifyContent: 'space-between', paddingLeft: 52 }}>
+          {['8a', '12p', '4p', '8p', '12a'].map((l) => (
+            <T key={l} variant="caption" color={Colors.textTertiary} style={{ fontSize: 11 }}>
+              {l}
+            </T>
+          ))}
         </Row>
 
-        <Row gap={Spacing.md} style={{ marginTop: Spacing.sm }}>
-          <Avatar profile={profile} size={32} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <T variant="label">You</T>
+        <Row gap={Spacing.md}>
+          <Avatar profile={profile} size={36} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <T variant="label">You</T>
+              {mine.length === 0 ? (
+                <Pressable onPress={() => router.push('/availability')}>
+                  <T variant="caption" color={Colors.text} style={{ fontWeight: '600' }}>
+                    Add free time
+                  </T>
+                </Pressable>
+              ) : null}
+            </Row>
             <Timeline windows={mine} dayStart={day} />
           </View>
         </Row>
 
-        {mine.length === 0 ? (
-          <Pressable onPress={() => router.push('/availability')}>
-            <T variant="caption" color={theme.accent} style={{ marginTop: 4 }}>
-              No free time set for this day — tap to add some →
-            </T>
-          </Pressable>
-        ) : null}
-
         {rows.map(({ profile: p, windows, overlap }) => (
-          <Row key={p.id} gap={Spacing.md} style={{ marginTop: Spacing.sm }}>
-            <Avatar profile={p} size={32} />
-            <View style={{ flex: 1, gap: 4 }}>
+          <Row key={p.id} gap={Spacing.md}>
+            <Avatar profile={p} size={36} />
+            <View style={{ flex: 1, gap: 8 }}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <T variant="label">{displayName(p)}</T>
                 {overlap.length > 0 ? (
-                  <T variant="caption" color={theme.primary} style={{ fontWeight: '700' }}>
-                    both free {formatTime(overlap[0].start)}–{formatTime(overlap[0].end)}
+                  <T variant="caption" color={Colors.accent} style={{ fontWeight: '600' }}>
+                    {formatTime(overlap[0].start)} – {formatTime(overlap[0].end)}
                   </T>
                 ) : null}
               </Row>
-              <View>
-                <Timeline windows={windows} dayStart={day} />
-                {overlap.length > 0 ? (
-                  <View style={{ position: 'absolute', left: 0, right: 0, top: 0 }} pointerEvents="none">
-                    <Timeline windows={overlap} dayStart={day} highlight />
-                  </View>
-                ) : null}
-              </View>
+              <Timeline windows={windows} overlap={overlap} dayStart={day} />
             </View>
           </Row>
         ))}
-        <Row style={{ marginTop: Spacing.md }} gap={Spacing.lg}>
+
+        <Row gap={Spacing.lg} style={{ paddingTop: Spacing.xs }}>
           <Row gap={6}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.free }} />
-            <T variant="caption">free</T>
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: Colors.free }} />
+            <T variant="caption">Free</T>
           </Row>
           <Row gap={6}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />
-            <T variant="caption">you're both free</T>
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: Colors.accent }} />
+            <T variant="caption">Free with you</T>
           </Row>
         </Row>
       </Card>
 
       {data && data.friends.length === 0 ? (
-        <Empty emoji="🫥" title="No friends yet" body="Add friends to see their free time here." />
+        <Empty icon="friends" title="No friends yet" body="Add friends to see their free time next to yours." />
       ) : null}
 
-      <Section title="Quick actions">
-        <Row style={{ flexWrap: 'wrap' }}>
-          <Button title="Edit my free time" variant="secondary" size="sm" onPress={() => router.push('/availability')} />
-          <Button title="Plan a hangout" variant="accent" size="sm" onPress={() => router.push('/activity/new')} />
-        </Row>
-      </Section>
+      <Row>
+        <Button title="Edit free time" variant="secondary" size="sm" onPress={() => router.push('/availability')} />
+        <Button title="New hangout" variant="white" size="sm" onPress={() => router.push('/activity/new')} />
+      </Row>
     </Screen>
   );
 }

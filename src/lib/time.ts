@@ -107,3 +107,11 @@ export function timeLeft(expiresAt: string | number): string {
   if (h >= 1) return `${h}h left`;
   return `${Math.max(1, Math.floor(ms / 60000))}m left`;
 }
+
+/** Fraction (0–1) of a ping's lifetime that remains. */
+export function remainingFraction(createdAt: string, expiresAt: string): number {
+  const start = new Date(createdAt).getTime();
+  const end = new Date(expiresAt).getTime();
+  if (end <= start) return 0;
+  return Math.max(0, Math.min(1, (end - Date.now()) / (end - start)));
+}

@@ -49,21 +49,21 @@ export function TimeRangePicker({ value, onChange }: { value: TimeRange; onChang
 
   return (
     <View style={{ gap: Spacing.md }}>
-      <T variant="label">Day</T>
+      <T variant="overline">Day</T>
       <ChipRow selectedIndex={days.indexOf(selectedDay)}>
         {days.map((d) => (
           <Chip key={d} label={formatDay(d)} selected={d === selectedDay} onPress={() => set(d, selectedMinute, duration)} />
         ))}
       </ChipRow>
 
-      <T variant="label">Starts</T>
+      <T variant="overline">Starts</T>
       <ChipRow selectedIndex={TIMES.indexOf(selectedMinute)}>
         {TIMES.map((m) => (
           <Chip key={m} label={minutesToLabel(m)} selected={m === selectedMinute} onPress={() => set(selectedDay, m, duration)} />
         ))}
       </ChipRow>
 
-      <T variant="label">For</T>
+      <T variant="overline">Duration</T>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {DURATIONS.map((d) => (
           <Chip

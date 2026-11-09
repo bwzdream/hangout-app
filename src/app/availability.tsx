@@ -1,24 +1,36 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { TimeRangePicker, defaultRange } from '@/components/time-picker';
-import { Button, Card, Chip, Loading, Row, Screen, Section, T } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Button, Card, Chip, List, ListRow, Loading, Row, Screen, Section, T } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { errorMessage, notify } from '@/lib/alert';
 import { addFreeSlot, addRules, deleteFreeSlot, deleteRule, getAvailability, getMyFreeSlots, getMyRules } from '@/lib/api';
 import { suggestRecurringRules } from '@/lib/availability';
-import { DAY_MS, WEEKDAYS, formatRange, minutesToLabel } from '@/lib/time';
+import { DAY_MS, WEEKDAYS, formatDay, formatTime, minutesToLabel } from '@/lib/time';
 import { useAuth } from '@/providers/auth';
 
+const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const PRESETS = [
-  { label: '🌙 Weeknights 6–10pm', days: [1, 2, 3, 4], start: 18 * 60, end: 22 * 60 },
-  { label: '🎉 Friday nights', days: [5], start: 18 * 60, end: 23 * 60 + 59 },
-  { label: '☀️ Weekend afternoons', days: [0, 6], start: 11 * 60, end: 17 * 60 },
-  { label: '🥞 Weekend brunch', days: [0, 6], start: 10 * 60, end: 13 * 60 },
+  { label: 'Weeknights', days: [1, 2, 3, 4], start: 18 * 60, end: 22 * 60 },
+  { label: 'Friday nights', days: [5], start: 18 * 60, end: 23 * 60 + 59 },
+  { label: 'Weekend afternoons', days: [0, 6], start: 11 * 60, end: 17 * 60 },
+  { label: 'Weekend brunch', days: [0, 6], start: 10 * 60, end: 13 * 60 },
 ];
 
 const TIMES = Array.from({ length: 37 }, (_, i) => 6 * 60 + i * 30); // 6am → midnight
+
+function RemoveLink({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable hitSlop={8} onPress={onPress}>
+      <T variant="caption" color={Colors.textTertiary}>
+        Remove
+      </T>
+    </Pressable>
+  );
+}
 
 export default function Availability() {
   const { session } = useAuth();
@@ -35,7 +47,7 @@ export default function Availability() {
     if (meId) {
       const now = Date.now();
       const avail = await getAvailability([meId], { start: now, end: now + 21 * DAY_MS });
-      // Only suggest from calendar data if the user has actually synced a calendar.
+      // Only learn from calendar data if a calendar has actually been synced.
       if (avail[meId]?.busy.length) learned = suggestRecurringRules(avail[meId], now);
     }
     return { rules, slots, learned };
@@ -52,13 +64,13 @@ export default function Availability() {
       await fn();
       await reload();
     } catch (e) {
-      notify('Oops', errorMessage(e));
+      notify('Something went wrong', errorMessage(e));
     }
   };
 
   const addRoutine = () => {
-    if (days.length === 0) return notify('Pick at least one day 📆');
-    if (end <= start) return notify('End time should be after start time ⏰');
+    if (days.length === 0) return notify('Pick at least one day');
+    if (end <= start) return notify('End time must be after start time');
     run(async () => {
       await addRules(days.map((weekday) => ({ weekday, start_minute: start, end_minute: end })));
       setDays([]);
@@ -67,96 +79,106 @@ export default function Availability() {
 
   if (loading && !data) return <Loading />;
 
+  const ruleRows = WEEKDAYS.flatMap((_, weekday) =>
+    (grouped[weekday] ?? []).map((r) => (
+      <ListRow
+        key={r.id}
+        title={FULL_DAYS[weekday]}
+        subtitle={`${minutesToLabel(r.start_minute)} – ${r.end_minute === 1440 ? 'midnight' : minutesToLabel(r.end_minute)}`}
+        chevron={false}
+        right={<RemoveLink onPress={() => run(() => deleteRule(r.id))} />}
+      />
+    )),
+  );
+
   return (
     <Screen edges={['bottom']}>
       <T variant="caption">
-        Friends see these times (minus anything busy on your synced calendar). Add one-off free time below.
+        Friends see these times, minus anything busy on your synced calendars.
       </T>
 
       {data && data.learned.length > 0 ? (
-        <Section title="From your calendar ✨">
-          <T variant="caption" style={{ marginTop: -6 }}>
-            These have been open on your calendar for the next few weeks:
-          </T>
-          {data.learned.map((r) => (
-            <Card key={`${r.weekday}-${r.start_minute}`} tone="accentSoft">
-              <Row style={{ justifyContent: 'space-between' }}>
-                <T variant="label">
-                  {WEEKDAYS[r.weekday]} {minutesToLabel(r.start_minute)}–{minutesToLabel(r.end_minute)}
-                </T>
-                <Button title="Add" size="sm" variant="accent" onPress={() => run(() => addRules([r]))} />
-              </Row>
-            </Card>
-          ))}
+        <Section title="Suggested from your calendar">
+          <List>
+            {data.learned.map((r) => (
+              <ListRow
+                key={`${r.weekday}-${r.start_minute}`}
+                icon="sparkle"
+                title={FULL_DAYS[r.weekday]}
+                subtitle={`${minutesToLabel(r.start_minute)} – ${minutesToLabel(r.end_minute)} has been open`}
+                chevron={false}
+                right={<Button title="Add" size="sm" onPress={() => run(() => addRules([r]))} />}
+              />
+            ))}
+          </List>
         </Section>
       ) : null}
 
       <Section title="Weekly routine">
-        {WEEKDAYS.map((name, weekday) =>
-          grouped[weekday]?.length ? (
-            <Card key={weekday}>
-              <T variant="label">{name}</T>
-              {grouped[weekday].map((r) => (
-                <Row key={r.id} style={{ justifyContent: 'space-between' }}>
-                  <T>
-                    {minutesToLabel(r.start_minute)} – {minutesToLabel(r.end_minute)}
-                  </T>
-                  <Button title="Remove" variant="danger" size="sm" onPress={() => run(() => deleteRule(r.id))} />
-                </Row>
-              ))}
-            </Card>
-          ) : null,
-        )}
-        {data?.rules.length === 0 ? <T variant="caption">Nothing yet — try a preset 👇</T> : null}
-      </Section>
-
-      <Section title="Quick presets">
+        {ruleRows.length > 0 ? <List>{ruleRows}</List> : <T variant="caption">Nothing yet. Start with a preset.</T>}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {PRESETS.map((p) => (
             <Chip
               key={p.label}
-              label={p.label}
-              onPress={() =>
-                run(() => addRules(p.days.map((weekday) => ({ weekday, start_minute: p.start, end_minute: p.end }))))
-              }
+              label={`+ ${p.label}`}
+              onPress={() => run(() => addRules(p.days.map((weekday) => ({ weekday, start_minute: p.start, end_minute: p.end }))))}
             />
           ))}
         </View>
       </Section>
 
-      <Section title="Custom routine">
-        <Card style={{ gap: Spacing.md }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {WEEKDAYS.map((name, i) => (
-              <Chip
-                key={name}
-                label={name}
-                selected={days.includes(i)}
-                onPress={() => setDays((d) => (d.includes(i) ? d.filter((x) => x !== i) : [...d, i]))}
-              />
-            ))}
-          </View>
-          <T variant="label">From</T>
+      <Section title="Custom">
+        <Card style={{ gap: Spacing.lg }}>
+          <Row gap={6} style={{ justifyContent: 'space-between' }}>
+            {WEEKDAYS.map((name, i) => {
+              const on = days.includes(i);
+              return (
+                <Pressable
+                  key={name}
+                  onPress={() => setDays((d) => (on ? d.filter((x) => x !== i) : [...d, i]))}
+                  style={{
+                    flex: 1,
+                    aspectRatio: 1,
+                    maxWidth: 44,
+                    borderRadius: 22,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: on ? Colors.white : Colors.surfaceRaised,
+                  }}>
+                  <T variant="label" color={on ? Colors.onAccent : Colors.textSecondary} style={{ fontSize: 13 }}>
+                    {name.slice(0, 1)}
+                  </T>
+                </Pressable>
+              );
+            })}
+          </Row>
+          <T variant="overline">From</T>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {TIMES.slice(0, -1).map((m) => (
               <Chip key={m} label={minutesToLabel(m)} selected={m === start} onPress={() => setStart(m)} />
             ))}
           </ScrollView>
-          <T variant="label">Until</T>
+          <T variant="overline">Until</T>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {TIMES.slice(1).map((m) => (
               <Chip key={m} label={m === 1440 ? 'midnight' : minutesToLabel(m)} selected={m === end} onPress={() => setEnd(m)} />
             ))}
           </ScrollView>
-          <Button title="Add to routine" onPress={addRoutine} />
+          <Button title="Add to routine" variant="white" onPress={addRoutine} />
         </Card>
       </Section>
 
       <Section
         title="One-off free time"
-        action={<Button title={showSlot ? 'Close' : '+ Add'} variant="ghost" size="sm" onPress={() => setShowSlot((s) => !s)} />}>
+        action={
+          <Pressable hitSlop={8} onPress={() => setShowSlot((s) => !s)}>
+            <T variant="caption" color={Colors.text} style={{ fontWeight: '600' }}>
+              {showSlot ? 'Close' : 'Add'}
+            </T>
+          </Pressable>
+        }>
         {showSlot ? (
-          <Card style={{ gap: Spacing.md }}>
+          <Card style={{ gap: Spacing.lg }}>
             <TimeRangePicker value={slot} onChange={setSlot} />
             <Button
               title="I'm free then"
@@ -169,17 +191,21 @@ export default function Availability() {
             />
           </Card>
         ) : null}
-        {data?.slots.map((s) => (
-          <Card key={s.id}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <T variant="label" style={{ flex: 1 }}>
-                {formatRange(s.starts_at, s.ends_at)}
-              </T>
-              <Button title="Remove" variant="danger" size="sm" onPress={() => run(() => deleteFreeSlot(s.id))} />
-            </Row>
-          </Card>
-        ))}
-        {data?.slots.length === 0 && !showSlot ? <T variant="caption">No one-off free time coming up.</T> : null}
+        {data && data.slots.length > 0 ? (
+          <List>
+            {data.slots.map((s) => (
+              <ListRow
+                key={s.id}
+                title={formatDay(s.starts_at)}
+                subtitle={`${formatTime(s.starts_at)} – ${formatTime(s.ends_at)}`}
+                chevron={false}
+                right={<RemoveLink onPress={() => run(() => deleteFreeSlot(s.id))} />}
+              />
+            ))}
+          </List>
+        ) : !showSlot ? (
+          <T variant="caption">No one-off free time coming up.</T>
+        ) : null}
       </Section>
     </Screen>
   );

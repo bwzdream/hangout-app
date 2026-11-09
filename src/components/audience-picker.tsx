@@ -19,30 +19,30 @@ export function AudiencePicker({
   allowInvite?: boolean;
 }) {
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: 10 }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <Chip
-          label="👯 All friends"
+          label="All friends"
           selected={value.visibility === 'friends'}
           onPress={() => onChange({ visibility: 'friends', circleId: null })}
         />
         {circles.map((c) => (
           <Chip
             key={c.id}
-            label={`${c.emoji} ${c.name}`}
+            label={c.name}
             selected={value.visibility === 'circle' && value.circleId === c.id}
             onPress={() => onChange({ visibility: 'circle', circleId: c.id })}
           />
         ))}
         {allowInvite ? (
           <Chip
-            label="🔒 Only people I pick"
+            label="Invite only"
             selected={value.visibility === 'invite'}
             onPress={() => onChange({ visibility: 'invite', circleId: null })}
           />
         ) : null}
       </View>
-      {circles.length === 0 ? <T variant="caption">Tip: make circles (e.g. "Close friends") on the Friends tab.</T> : null}
+      {circles.length === 0 ? <T variant="caption">Create circles from the Friends tab to share with smaller groups.</T> : null}
     </View>
   );
 }

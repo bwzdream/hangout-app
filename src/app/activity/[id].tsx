@@ -2,17 +2,16 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, Text, View } from 'react-native';
 
-import { Avatar, Button, Card, Empty, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Avatar, Badge, Button, Card, DateBlock, Empty, List, ListRow, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
-import { useTheme } from '@/hooks/use-theme';
 import { confirm, errorMessage, notify } from '@/lib/alert';
 import { deleteActivity, getActivity, getProfiles, setRsvp } from '@/lib/api';
 import { addToCalendar } from '@/lib/calendar';
-import { formatRange } from '@/lib/time';
+import { formatDay, formatTime } from '@/lib/time';
 import { useAuth } from '@/providers/auth';
 
-const VISIBILITY_LABEL = { friends: '👯 All friends', circle: '✨ A circle', invite: '🔒 Invite only' } as const;
+const VISIBILITY_LABEL = { friends: 'All friends', circle: 'Circle', invite: 'Invite only' } as const;
 
 function openMaps(location: string) {
   const q = encodeURIComponent(location);
@@ -24,7 +23,6 @@ function openMaps(location: string) {
 }
 
 export default function ActivityDetail() {
-  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const meId = session?.user.id;
@@ -39,7 +37,13 @@ export default function ActivityDetail() {
   });
 
   if (loading && !data) return <Loading />;
-  if (!data) return <Empty emoji="🫥" title="This hangout isn't available" body="It may have been deleted or isn't shared with you." />;
+  if (!data) {
+    return (
+      <Screen edges={['bottom']}>
+        <Empty icon="calendar" title="Hangout not available" body="It may have been cancelled or isn't shared with you." />
+      </Screen>
+    );
+  }
 
   const { activity, profiles } = data;
   const isHost = activity.host_id === meId;
@@ -54,7 +58,7 @@ export default function ActivityDetail() {
       await setRsvp(activity.id, status);
       await reload();
     } catch (e) {
-      notify('Oops', errorMessage(e));
+      notify('Something went wrong', errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -63,7 +67,7 @@ export default function ActivityDetail() {
   const calendar = async () => {
     try {
       const msg = await addToCalendar({
-        title: `${activity.emoji} ${activity.title}`,
+        title: activity.title,
         startsAt: activity.starts_at,
         endsAt: activity.ends_at,
         location: activity.location,
@@ -71,105 +75,108 @@ export default function ActivityDetail() {
       });
       notify(msg);
     } catch (e) {
-      notify("Couldn't add", errorMessage(e));
+      notify("Couldn't add to calendar", errorMessage(e));
     }
   };
 
   return (
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: '' }} />
-      <View style={{ alignItems: 'center', gap: Spacing.sm }}>
-        <Text style={{ fontSize: 72 }}>{activity.emoji}</Text>
-        <T variant="title" style={{ textAlign: 'center' }}>
-          {activity.title}
-        </T>
-        <T variant="caption">
-          hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])} · {VISIBILITY_LABEL[activity.visibility]}
-        </T>
+
+      <View style={{ gap: Spacing.lg }}>
+        <Row gap={Spacing.lg}>
+          <DateBlock date={activity.starts_at} size={64} />
+          <Text style={{ fontSize: 40 }}>{activity.emoji}</Text>
+        </Row>
+        <T variant="largeTitle">{activity.title}</T>
+        <Row>
+          <T variant="caption">Hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])}</T>
+          <Badge label={VISIBILITY_LABEL[activity.visibility]} tone="muted" />
+        </Row>
       </View>
 
-      <Card style={{ gap: Spacing.md }}>
-        <Row gap={Spacing.md}>
-          <Text style={{ fontSize: 22 }}>🕒</Text>
-          <T variant="label" style={{ flex: 1 }}>
-            {formatRange(activity.starts_at, activity.ends_at)}
-          </T>
-        </Row>
+      <List>
+        <ListRow
+          icon="clock"
+          title={`${formatDay(activity.starts_at)}, ${formatTime(activity.starts_at)}`}
+          subtitle={`Until ${formatTime(activity.ends_at)}`}
+          chevron={false}
+        />
         {activity.location ? (
-          <Row gap={Spacing.md}>
-            <Text style={{ fontSize: 22 }}>📍</Text>
-            <T variant="label" style={{ flex: 1 }}>
-              {activity.location}
-            </T>
-            <Button title="Map" size="sm" variant="ghost" onPress={() => openMaps(activity.location)} />
-          </Row>
+          <ListRow icon="pin" title={activity.location} subtitle="Open in Maps" onPress={() => openMaps(activity.location)} />
         ) : null}
-        {activity.details ? (
-          <Row gap={Spacing.md} style={{ alignItems: 'flex-start' }}>
-            <Text style={{ fontSize: 22 }}>📝</Text>
-            <T style={{ flex: 1 }}>{activity.details}</T>
-          </Row>
-        ) : null}
-      </Card>
+        <ListRow icon="calendarAdd" title="Add to calendar" onPress={calendar} />
+      </List>
+
+      {activity.details ? (
+        <Card>
+          <T variant="overline">Details</T>
+          <T variant="body" color={Colors.textSecondary}>
+            {activity.details}
+          </T>
+        </Card>
+      ) : null}
 
       {!past && !isHost ? (
         <Row>
           <Button
-            title={me?.status === 'going' ? "You're going!" : "I'm in"}
-            icon="🙌"
-            variant={me?.status === 'going' ? 'accent' : 'primary'}
+            title={me?.status === 'going' ? "You're going" : 'Going'}
+            icon={me?.status === 'going' ? 'check' : undefined}
+            variant={me?.status === 'going' ? 'primary' : 'white'}
+            size="lg"
             onPress={() => rsvp(me?.status === 'going' ? null : 'going')}
             loading={busy}
             style={{ flex: 1 }}
           />
           <Button
             title="Maybe"
-            icon="🤔"
-            variant={me?.status === 'maybe' ? 'accent' : 'secondary'}
+            variant="secondary"
+            size="lg"
             onPress={() => rsvp(me?.status === 'maybe' ? null : 'maybe')}
+            style={me?.status === 'maybe' ? { borderWidth: 1.5, borderColor: Colors.text } : undefined}
           />
         </Row>
       ) : null}
 
-      <Button title="Add to my calendar" icon="📅" variant="secondary" onPress={calendar} />
-
-      <Section title={`Who's going (${going.length})`}>
-        <Card style={{ gap: Spacing.md }}>
+      <Section title={`Going · ${going.length}`}>
+        <List>
           {going.map((m) => (
-            <Row key={m.user_id} gap={Spacing.md}>
-              <Avatar profile={profiles[m.user_id]} size={36} />
-              <T variant="label" style={{ flex: 1 }}>
-                {m.user_id === meId ? 'You' : displayName(profiles[m.user_id])}
-              </T>
-              {m.user_id === activity.host_id ? <T variant="caption">host 👑</T> : null}
-            </Row>
+            <ListRow
+              key={m.user_id}
+              title={m.user_id === meId ? 'You' : displayName(profiles[m.user_id])}
+              left={<Avatar profile={profiles[m.user_id]} size={32} />}
+              right={m.user_id === activity.host_id ? <Badge label="Host" tone="muted" /> : undefined}
+              chevron={false}
+            />
           ))}
-          {maybe.length > 0 ? (
-            <>
-              <T variant="caption" color={theme.textSecondary}>
-                Maybe
-              </T>
-              {maybe.map((m) => (
-                <Row key={m.user_id} gap={Spacing.md}>
-                  <Avatar profile={profiles[m.user_id]} size={30} />
-                  <T variant="caption">{m.user_id === meId ? 'You' : displayName(profiles[m.user_id])}</T>
-                </Row>
-              ))}
-            </>
-          ) : null}
-        </Card>
+        </List>
       </Section>
 
-      <Card tone="cardAlt">
-        <T variant="caption">📸 Shared album, comments & split-the-bill are coming in v2.</T>
-      </Card>
+      {maybe.length > 0 ? (
+        <Section title={`Maybe · ${maybe.length}`}>
+          <List>
+            {maybe.map((m) => (
+              <ListRow
+                key={m.user_id}
+                title={m.user_id === meId ? 'You' : displayName(profiles[m.user_id])}
+                left={<Avatar profile={profiles[m.user_id]} size={32} />}
+                chevron={false}
+              />
+            ))}
+          </List>
+        </Section>
+      ) : null}
+
+      <T variant="caption" color={Colors.textTertiary}>
+        Shared photos, comments and bill splitting are coming soon.
+      </T>
 
       {isHost ? (
         <Button
           title="Cancel hangout"
           variant="danger"
           onPress={async () => {
-            if (await confirm('Cancel hangout?', 'It will be removed for everyone.', 'Cancel it')) {
+            if (await confirm('Cancel hangout?', 'It will be removed for everyone.', 'Cancel hangout')) {
               await deleteActivity(activity.id);
               router.back();
             }
