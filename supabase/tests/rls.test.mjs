@@ -1,10 +1,15 @@
 // Verifies the Pingle migration + RLS policies on PGlite (in-process Postgres) with a stubbed Supabase auth layer.
 // Run: npm run test:db
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
-const migration = readFileSync(new URL('../migrations/20261109000000_init.sql', import.meta.url), 'utf8');
+const dir = new URL('../migrations/', import.meta.url);
+const migration = readdirSync(dir)
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(new URL(f, dir), 'utf8'))
+  .join('\n');
 const db = new PGlite();
 
 await db.exec(`
