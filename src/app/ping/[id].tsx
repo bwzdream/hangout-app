@@ -98,7 +98,7 @@ export default function PingStory() {
           ) : null}
 
           <View style={{ gap: Spacing.md }}>
-            <T variant="overline" color={Colors.accent}>
+            <T variant="overline" color={Colors.accentInk}>
               {formatDay(ping.starts_at)}
             </T>
             <T variant="display">{headline}</T>

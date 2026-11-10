@@ -28,19 +28,19 @@ export function ActivityCard({
   return (
     <TiltCard
       height={height}
-      glow={palette[0]}
+      glow={Colors.cardShadow}
       onPress={() => router.push({ pathname: '/activity/[id]', params: { id: activity.id } })}>
       <LiquidGradient palette={palette}>
         <View style={{ flex: 1, padding: 18, justifyContent: 'space-between' }}>
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ backgroundColor: '#000', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-              <T variant="caption" color="#fff" style={{ fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
+            <View style={{ backgroundColor: Colors.cardPill, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+              <T variant="caption" color={Colors.cardPillInk} style={{ fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
                 {d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
               </T>
             </View>
             {imIn ? (
-              <View style={{ backgroundColor: '#000', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <T variant="caption" color={Colors.accent} style={{ fontWeight: '800', fontSize: 12 }}>
+              <View style={{ backgroundColor: Colors.accent, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <T variant="caption" color={Colors.onAccent} style={{ fontWeight: '800', fontSize: 12 }}>
                   {activity.host_id === meId ? 'HOSTING' : 'GOING'}
                 </T>
               </View>
@@ -48,17 +48,17 @@ export function ActivityCard({
           </Row>
 
           <View style={{ gap: 6 }}>
-            <T variant="largeTitle" color="#fff" numberOfLines={2}>
+            <T variant="largeTitle" color={Colors.cardInk} numberOfLines={2}>
               {activity.title}
             </T>
             <Row style={{ justifyContent: 'space-between' }}>
-              <T variant="label" color="rgba(255,255,255,0.8)" numberOfLines={1} style={{ flex: 1 }}>
+              <T variant="label" color={Colors.cardInkSecondary} numberOfLines={1} style={{ flex: 1 }}>
                 {formatTime(activity.starts_at)}
                 {activity.location ? ` · ${activity.location}` : ''}
               </T>
               <Row gap={8}>
-                <AvatarStack profiles={going.map((m) => profiles[m.user_id])} size={24} max={3} borderColor="#000" />
-                <T variant="label" color="#fff">
+                <AvatarStack profiles={going.map((m) => profiles[m.user_id])} size={24} max={3} borderColor={Colors.cardPill} />
+                <T variant="label" color={Colors.cardInk}>
                   {going.length}
                 </T>
               </Row>

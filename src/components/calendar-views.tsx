@@ -63,7 +63,7 @@ export function MonthCalendar({
                   ]}>
                   <T
                     variant="label"
-                    color={isSelected ? Colors.onAccent : isToday ? Colors.accent : inMonth ? Colors.text : Colors.textTertiary}
+                    color={isSelected ? Colors.onAccent : isToday ? Colors.accentInk : inMonth ? Colors.text : Colors.textTertiary}
                     style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '600' }}>
                     {d.getDate()}
                   </T>
@@ -146,10 +146,10 @@ export function DayTimeline({
                     padding: 6,
                     backgroundColor: e.color,
                   }}>
-                  <T variant="caption" color="#fff" numberOfLines={2} style={{ fontWeight: '700', fontSize: 12, lineHeight: 15 }}>
+                  <T variant="caption" color={Colors.onPink} numberOfLines={2} style={{ fontWeight: '700', fontSize: 12, lineHeight: 15 }}>
                     {e.title}
                   </T>
-                  <T variant="caption" color="rgba(255,255,255,0.8)" style={{ fontSize: 11, lineHeight: 13 }}>
+                  <T variant="caption" color={Colors.onPink} style={{ fontSize: 11, lineHeight: 13, opacity: 0.8 }}>
                     {formatTime(e.start)}
                   </T>
                 </Pressable>

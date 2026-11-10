@@ -85,12 +85,12 @@ export default function ActivityDetail() {
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ title: '' }} />
 
-      <TiltCard height={300} glow={palette[0]}>
+      <TiltCard height={300} glow={Colors.cardShadow}>
         <LiquidGradient palette={palette}>
           <View style={{ flex: 1, padding: 20, justifyContent: 'space-between' }}>
             <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <View style={{ backgroundColor: '#000', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <T variant="caption" color="#fff" style={{ fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
+              <View style={{ backgroundColor: Colors.cardPill, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <T variant="caption" color={Colors.cardPillInk} style={{ fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
                   {new Date(activity.starts_at)
                     .toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
                     .toUpperCase()}
@@ -99,10 +99,10 @@ export default function ActivityDetail() {
               <Text style={{ fontSize: 40 }}>{activity.emoji}</Text>
             </Row>
             <View style={{ gap: 6 }}>
-              <T variant="display" color="#fff" numberOfLines={2} style={{ fontSize: 44, lineHeight: 46 }}>
+              <T variant="display" color={Colors.cardInk} numberOfLines={2} style={{ fontSize: 46, lineHeight: 48 }}>
                 {activity.title}
               </T>
-              <T variant="label" color="rgba(255,255,255,0.8)">
+              <T variant="label" color={Colors.cardInkSecondary}>
                 Hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])} · {VISIBILITY_LABEL[activity.visibility]}
               </T>
             </View>

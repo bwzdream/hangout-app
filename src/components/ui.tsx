@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Colors, Fonts, MaxContentWidth, Radius, Spacing, isLight } from '@/constants/theme';
 import type { Profile } from '@/lib/types';
 
 import { Icon, type IconName } from './icon';
@@ -24,23 +24,42 @@ import { Icon, type IconName } from './icon';
 // ─── Text ────────────────────────────────────────────────────
 type Variant = 'display' | 'largeTitle' | 'title' | 'heading' | 'body' | 'label' | 'caption' | 'overline';
 
+const SERIF_VARIANTS = new Set<Variant>(['display', 'largeTitle', 'title']);
+
 export function T({ variant = 'body', color, style, ...rest }: TextProps & { variant?: Variant; color?: string }) {
   const defaultColor =
     variant === 'caption' ? Colors.textSecondary : variant === 'overline' ? Colors.textTertiary : Colors.text;
-  return <Text style={[text[variant], { color: color ?? defaultColor }, style]} {...rest} />;
+  // A single-weight serif must not be synthesised bold (iOS would fall back to the system font).
+  const serifFix = Fonts.serif && SERIF_VARIANTS.has(variant) ? serifReset : null;
+  return <Text style={[text[variant], { color: color ?? defaultColor }, style, serifFix]} {...rest} />;
 }
 
-const display = Fonts?.display;
-const text = StyleSheet.create({
-  display: { fontFamily: display, fontSize: 52, lineHeight: 52, fontWeight: '900', letterSpacing: -2 },
-  largeTitle: { fontFamily: display, fontSize: 38, lineHeight: 42, fontWeight: '900', letterSpacing: -1.4 },
-  title: { fontFamily: display, fontSize: 28, lineHeight: 32, fontWeight: '800', letterSpacing: -0.9 },
-  heading: { fontFamily: display, fontSize: 20, lineHeight: 24, fontWeight: '800', letterSpacing: -0.4 },
-  body: { fontFamily: display, fontSize: 16, lineHeight: 22, fontWeight: '400', letterSpacing: -0.2 },
-  label: { fontFamily: display, fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.15 },
-  caption: { fontFamily: display, fontSize: 13, lineHeight: 18, fontWeight: '500' },
-  overline: { fontFamily: display, fontSize: 12, lineHeight: 16, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' },
-});
+const display = Fonts.display;
+const body = Fonts.body;
+const serifReset = { fontWeight: 'normal' as const, fontFamily: display };
+const text = StyleSheet.create(
+  Fonts.serif
+    ? {
+        display: { fontFamily: display, fontSize: 56, lineHeight: 58, letterSpacing: -1.2 },
+        largeTitle: { fontFamily: display, fontSize: 42, lineHeight: 46, letterSpacing: -0.8 },
+        title: { fontFamily: display, fontSize: 30, lineHeight: 34, letterSpacing: -0.4 },
+        heading: { fontFamily: body, fontSize: 18, lineHeight: 23, fontWeight: '600', letterSpacing: -0.3 },
+        body: { fontFamily: body, fontSize: 16, lineHeight: 22, fontWeight: '400', letterSpacing: -0.2 },
+        label: { fontFamily: body, fontSize: 15, lineHeight: 20, fontWeight: '500', letterSpacing: -0.15 },
+        caption: { fontFamily: body, fontSize: 13, lineHeight: 18, fontWeight: '400' },
+        overline: { fontFamily: body, fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.9, textTransform: 'uppercase' },
+      }
+    : {
+        display: { fontFamily: display, fontSize: 52, lineHeight: 52, fontWeight: '900', letterSpacing: -2 },
+        largeTitle: { fontFamily: display, fontSize: 38, lineHeight: 42, fontWeight: '900', letterSpacing: -1.4 },
+        title: { fontFamily: display, fontSize: 28, lineHeight: 32, fontWeight: '800', letterSpacing: -0.9 },
+        heading: { fontFamily: body, fontSize: 20, lineHeight: 24, fontWeight: '800', letterSpacing: -0.4 },
+        body: { fontFamily: body, fontSize: 16, lineHeight: 22, fontWeight: '400', letterSpacing: -0.2 },
+        label: { fontFamily: body, fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.15 },
+        caption: { fontFamily: body, fontSize: 13, lineHeight: 18, fontWeight: '500' },
+        overline: { fontFamily: body, fontSize: 12, lineHeight: 16, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' },
+      },
+);
 
 // ─── Layout ──────────────────────────────────────────────────
 export function Screen({
@@ -65,7 +84,7 @@ export function Screen({
         <ScrollView
           contentContainerStyle={{ paddingBottom: 64 }}
           keyboardShouldPersistTaps="handled"
-          indicatorStyle="white"
+          indicatorStyle={isLight ? 'black' : 'white'}
           refreshControl={
             onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={Colors.textSecondary} /> : undefined
           }>
@@ -207,8 +226,8 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   size?: 'sm' | 'md' | 'lg';
 }) {
-  const bg = { primary: Colors.accent, white: Colors.accent, secondary: 'transparent', ghost: 'transparent', danger: 'transparent' }[variant];
-  const fg = { primary: Colors.onAccent, white: Colors.onAccent, secondary: Colors.text, ghost: Colors.text, danger: Colors.danger }[variant];
+  const bg = { primary: Colors.cta, white: Colors.cta, secondary: 'transparent', ghost: 'transparent', danger: 'transparent' }[variant];
+  const fg = { primary: Colors.onCta, white: Colors.onCta, secondary: Colors.text, ghost: Colors.text, danger: Colors.danger }[variant];
   const height = { sm: 36, md: 48, lg: 56 }[size];
   return (
     <Pressable
@@ -280,8 +299,8 @@ export function Input({ label, style, ...props }: TextInputProps & { label?: str
       {label ? <T variant="overline">{label}</T> : null}
       <TextInput
         placeholderTextColor={Colors.textTertiary}
-        selectionColor={Colors.accent}
-        keyboardAppearance="dark"
+        selectionColor={Colors.accentInk}
+        keyboardAppearance={isLight ? 'light' : 'dark'}
         style={[styles.input, props.multiline && { minHeight: 96, textAlignVertical: 'top', paddingTop: 14 }, style as StyleProp<TextStyle>]}
         {...props}
       />
@@ -292,7 +311,7 @@ export function Input({ label, style, ...props }: TextInputProps & { label?: str
 export function Badge({ label, tone = 'accent' }: { label: string; tone?: 'accent' | 'pink' | 'muted' }) {
   return (
     <View style={[styles.badge, { backgroundColor: tone === 'accent' ? Colors.accentDim : tone === 'pink' ? Colors.pinkDim : 'transparent' }]}>
-      <T variant="caption" color={tone === 'accent' ? Colors.accent : tone === 'pink' ? Colors.pink : Colors.textSecondary} style={{ fontWeight: '800', fontSize: 12 }}>
+      <T variant="caption" color={tone === 'accent' ? Colors.accentInk : tone === 'pink' ? Colors.pink : Colors.textSecondary} style={{ fontWeight: '800', fontSize: 12 }}>
         {label}
       </T>
     </View>
@@ -320,7 +339,7 @@ export function Avatar({ profile, size = 44, ring }: { profile?: Profile | null;
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-      <Text style={{ color: Colors.text, fontWeight: '800', fontSize: size * 0.36, letterSpacing: 0.3, fontFamily: display }}>
+      <Text style={{ color: Colors.text, fontWeight: '800', fontSize: size * 0.36, letterSpacing: 0.3, fontFamily: body }}>
         {initials(profile)}
       </Text>
     </View>
@@ -368,7 +387,7 @@ export function DateBlock({ date, size = 56 }: { date: string | number; size?: n
   const d = new Date(date);
   return (
     <View style={{ width: size, alignItems: 'flex-start' }}>
-      <T variant="overline" color={Colors.accent} style={{ fontSize: 10, lineHeight: 12 }}>
+      <T variant="overline" color={Colors.accentInk} style={{ fontSize: 10, lineHeight: 12 }}>
         {d.toLocaleDateString(undefined, { month: 'short' })}
       </T>
       <T variant="title" style={{ fontSize: size * 0.42, lineHeight: size * 0.48 }}>
@@ -382,7 +401,7 @@ export function DateBlock({ date, size = 56 }: { date: string | number; size?: n
 export function Empty({ icon, title, body, action }: { icon: IconName; title: string; body?: string; action?: ReactNode }) {
   return (
     <View style={{ alignItems: 'flex-start', gap: Spacing.sm, paddingVertical: Spacing.sm }}>
-      <Icon name={icon} size={26} color={Colors.accent} />
+      <Icon name={icon} size={26} color={Colors.accentInk} />
       <T variant="title" style={{ marginTop: Spacing.xs }}>
         {title}
       </T>
@@ -415,7 +434,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7, transform: [{ scale: 0.985 }] },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.hairline },
   listRow: { paddingVertical: 14, minHeight: 58 },
-  button: { borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+  button: { borderRadius: Radius.button, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   iconButton: {
     width: 40,
     height: 40,
@@ -434,7 +453,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: Colors.text,
-    fontFamily: display,
+    fontFamily: body,
   },
   badge: { borderRadius: Radius.pill, paddingHorizontal: 9, paddingVertical: 3 },
 });

@@ -1,12 +1,11 @@
 :root {
   --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, 'Segoe UI', Roboto,
     'Helvetica Neue', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
-  color-scheme: dark;
 }
 
 html,
 body {
-  background-color: #000000;
+  background-color: var(--app-bg, #eeebe5);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

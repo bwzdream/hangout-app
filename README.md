@@ -69,6 +69,17 @@ npx eas-cli@latest init                       # links an EAS project (enables pu
 npx eas-cli@latest build --profile development --platform ios     # or android
 ```
 
+## Themes
+
+Two looks ship in the code; pick one at build time in `.env`:
+
+| `EXPO_PUBLIC_THEME` | Look |
+|---|---|
+| `light` (default) | Warm off-white, black text and buttons, bright mint highlights, Instrument Serif headlines |
+| `dark` | Black, acid green primary, neon pink support |
+
+All colors live in `src/constants/theme.ts`.
+
 ## Tests
 
 ```bash

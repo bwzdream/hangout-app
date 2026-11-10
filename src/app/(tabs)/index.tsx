@@ -121,7 +121,7 @@ export default function Home() {
             <Icon name="bolt" size={18} color={Colors.accent} />
           </View>
         </Row>
-        <T variant="body" color="rgba(10,10,11,0.65)" style={{ fontWeight: '500' }}>
+        <T variant="body" color={Colors.onAccent} style={{ fontWeight: '500', opacity: 0.65 }}>
           Let your friends know. Disappears when you&apos;re not.
         </T>
       </Pressable>
@@ -149,7 +149,7 @@ export default function Home() {
               <View key={key} style={{ gap: Spacing.sm, paddingVertical: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.hairline }}>
                 <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <View style={{ gap: 2 }}>
-                    <T variant="overline" color={Colors.accent}>
+                    <T variant="overline" color={Colors.accentInk}>
                       {formatDay(o.start)}
                     </T>
                     <T variant="largeTitle">

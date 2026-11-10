@@ -1,20 +1,22 @@
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { InstrumentSerif_400Regular, useFonts } from '@expo-google-fonts/instrument-serif';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SetupNeeded } from '@/components/setup-needed';
-import { Colors } from '@/constants/theme';
+import { Colors, isLight } from '@/constants/theme';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { AuthProvider, useAuth } from '@/providers/auth';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const navTheme = {
-  ...DarkTheme,
+  ...(isLight ? DefaultTheme : DarkTheme),
+  dark: !isLight,
   colors: {
-    ...DarkTheme.colors,
+    ...(isLight ? DefaultTheme : DarkTheme).colors,
     primary: Colors.accent,
     background: Colors.background,
     card: Colors.background,
@@ -62,10 +64,13 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({ InstrumentSerif_400Regular });
+  if (!fontsLoaded && !fontError) return null; // splash screen stays up
+
   return (
     <SafeAreaProvider style={{ backgroundColor: Colors.background }}>
       <ThemeProvider value={navTheme}>
-        <StatusBar style="light" />
+        <StatusBar style={isLight ? 'dark' : 'light'} />
         {isSupabaseConfigured ? (
           <AuthProvider>
             <RootNavigator />

@@ -20,18 +20,13 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { Radius } from '@/constants/theme';
+import { Colors, Radius, isLight } from '@/constants/theme';
 
 // ─── Palettes ────────────────────────────────────────────────
-// Brand-only palettes: acid green + neon pink on black, in different arrangements.
-export const PALETTES = [
-  ['#B4FF00', '#FF2D95', '#000000'],
-  ['#FF2D95', '#B4FF00', '#000000'],
-  ['#B4FF00', '#0A3A00', '#000000'],
-  ['#FF2D95', '#4A0026', '#000000'],
-] as const;
+// Palettes come from the active theme (brand colors only).
+export const PALETTES = Colors.palettes;
 
-export type Palette = (typeof PALETTES)[number];
+export type Palette = [string, string, string];
 
 export function paletteFor(seed: string): Palette {
   let h = 0;
@@ -91,7 +86,7 @@ export function LiquidGradient({ palette, children }: { palette: Palette; childr
         {Platform.OS !== 'web' ? (
           <BlurView
             intensity={70}
-            tint="dark"
+            tint={isLight ? 'light' : 'dark'}
             blurTarget={target}
             blurMethod="dimezisBlurViewSdk31Plus"
             style={StyleSheet.absoluteFill}
@@ -99,7 +94,7 @@ export function LiquidGradient({ palette, children }: { palette: Palette; childr
         ) : null}
         {/* Legibility scrim + film grain–like depth at the bottom */}
         <LinearGradient
-          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.88)']}
+          colors={Colors.scrim}
           locations={[0.15, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -178,7 +173,7 @@ function Sheen({ ry, rx }: { ry: SharedValue<number>; rx: SharedValue<number> })
   return (
     <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: -80, bottom: -80, left: '30%', width: 120 }, style]}>
       <LinearGradient
-        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+        colors={['rgba(255,255,255,0)', Colors.sheen, 'rgba(255,255,255,0)']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={StyleSheet.absoluteFill}
