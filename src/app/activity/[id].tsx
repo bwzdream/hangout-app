@@ -2,7 +2,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, Text, View } from 'react-native';
 
-import { Glass, LiquidGradient, TiltCard, paletteFor } from '@/components/liquid';
+import { LiquidGradient, TiltCard, paletteFor } from '@/components/liquid';
 import { Avatar, Badge, Button, Card, Empty, List, ListRow, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
@@ -87,33 +87,25 @@ export default function ActivityDetail() {
 
       <TiltCard height={300} glow={palette[0]}>
         <LiquidGradient palette={palette}>
-          <View style={{ flex: 1, padding: 12, justifyContent: 'space-between' }}>
+          <View style={{ flex: 1, padding: 20, justifyContent: 'space-between' }}>
             <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Glass radius={16} style={{ width: 62, height: 66, alignItems: 'center', justifyContent: 'center' }}>
-                <T variant="overline" color="rgba(255,255,255,0.75)" style={{ fontSize: 10, lineHeight: 12 }}>
-                  {new Date(activity.starts_at).toLocaleDateString(undefined, { month: 'short' })}
+              <View style={{ backgroundColor: '#000', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <T variant="caption" color="#fff" style={{ fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
+                  {new Date(activity.starts_at)
+                    .toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+                    .toUpperCase()}
                 </T>
-                <T variant="title" color="#fff" style={{ fontSize: 28, lineHeight: 32, fontWeight: '800' }}>
-                  {new Date(activity.starts_at).getDate()}
-                </T>
-              </Glass>
-              <Text style={{ fontSize: 44 }}>{activity.emoji}</Text>
+              </View>
+              <Text style={{ fontSize: 40 }}>{activity.emoji}</Text>
             </Row>
-            <Glass radius={22} style={{ padding: 16, gap: 6 }}>
-              <T variant="largeTitle" color="#fff" numberOfLines={2}>
+            <View style={{ gap: 6 }}>
+              <T variant="display" color="#fff" numberOfLines={2} style={{ fontSize: 44, lineHeight: 46 }}>
                 {activity.title}
               </T>
-              <Row>
-                <T variant="caption" color="rgba(255,255,255,0.8)">
-                  Hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])}
-                </T>
-                <Glass radius={999} style={{ paddingHorizontal: 10, paddingVertical: 3 }}>
-                  <T variant="caption" color="#fff" style={{ fontSize: 12, fontWeight: '700' }}>
-                    {VISIBILITY_LABEL[activity.visibility]}
-                  </T>
-                </Glass>
-              </Row>
-            </Glass>
+              <T variant="label" color="rgba(255,255,255,0.8)">
+                Hosted by {isHost ? 'you' : displayName(profiles[activity.host_id])} · {VISIBILITY_LABEL[activity.visibility]}
+              </T>
+            </View>
           </View>
         </LiquidGradient>
       </TiltCard>
@@ -168,7 +160,7 @@ export default function ActivityDetail() {
               key={m.user_id}
               title={m.user_id === meId ? 'You' : displayName(profiles[m.user_id])}
               left={<Avatar profile={profiles[m.user_id]} size={32} />}
-              right={m.user_id === activity.host_id ? <Badge label="Host" tone="muted" /> : undefined}
+              right={m.user_id === activity.host_id ? <Badge label="Host" tone="pink" /> : undefined}
               chevron={false}
             />
           ))}

@@ -4,7 +4,6 @@ import { View } from 'react-native';
 
 import { DayTimeline, MonthCalendar, localDayStart, type DayMark, type TimelinePerson } from '@/components/calendar-views';
 import { ActivityCard } from '@/components/cards';
-import { paletteFor } from '@/components/liquid';
 import { Button, Card, Header, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
@@ -82,7 +81,7 @@ export default function CalendarTab() {
     title: a.title,
     start: new Date(a.starts_at).getTime(),
     end: new Date(a.ends_at).getTime(),
-    color: paletteFor(a.id)[0],
+    color: Colors.pink,
   }));
 
   const shiftMonth = (delta: number) => {
@@ -114,7 +113,7 @@ export default function CalendarTab() {
             <T variant="caption">Free with friends</T>
           </Row>
           <Row gap={6}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.text }} />
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.pink }} />
             <T variant="caption">Hangout</T>
           </Row>
         </Row>
@@ -139,7 +138,7 @@ export default function CalendarTab() {
         {dayActivities.map((a) => (
           <ActivityCard key={a.id} activity={a} profiles={data?.profiles ?? {}} meId={meId} height={200} />
         ))}
-        <Card style={{ paddingHorizontal: 10, paddingVertical: 12 }}>
+        <Card>
           <DayTimeline
             day={selected}
             people={people}

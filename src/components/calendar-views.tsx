@@ -59,21 +59,19 @@ export function MonthCalendar({
                 <View
                   style={[
                     styles.dayCircle,
-                    mark?.free && !isSelected && { backgroundColor: Colors.surfaceRaised },
-                    isToday && !isSelected && { borderWidth: 1.5, borderColor: Colors.accent },
-                    isSelected && { backgroundColor: Colors.white },
+                    isSelected && { backgroundColor: Colors.accent },
                   ]}>
                   <T
                     variant="label"
-                    color={isSelected ? Colors.onAccent : inMonth ? Colors.text : Colors.textTertiary}
-                    style={{ fontSize: 16, fontWeight: isSelected || isToday ? '800' : '600' }}>
+                    color={isSelected ? Colors.onAccent : isToday ? Colors.accent : inMonth ? Colors.text : Colors.textTertiary}
+                    style={{ fontSize: 17, fontWeight: isSelected || isToday ? '900' : '600' }}>
                     {d.getDate()}
                   </T>
                 </View>
                 <View style={styles.dots}>
                   {mark?.together ? <View style={[styles.dot, { backgroundColor: Colors.accent }]} /> : null}
                   {Array.from({ length: Math.min(mark?.events ?? 0, 3) }, (_, i) => (
-                    <View key={i} style={[styles.dot, { backgroundColor: Colors.text }]} />
+                    <View key={i} style={[styles.dot, { backgroundColor: Colors.pink }]} />
                   ))}
                 </View>
               </Pressable>
@@ -202,7 +200,7 @@ export function DayTimeline({
               <View key={i} style={{ position: 'absolute', top: i * HOUR, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: Colors.hairline }} />
             ))}
             {showNow ? (
-              <View style={{ position: 'absolute', top: y(now) - 1, left: 0, right: 0, height: 2, backgroundColor: Colors.danger }} />
+              <View style={{ position: 'absolute', top: y(now) - 1, left: 0, right: 0, height: 2, backgroundColor: Colors.text }} />
             ) : null}
           </View>
         </View>

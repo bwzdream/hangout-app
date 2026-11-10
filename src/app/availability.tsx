@@ -143,9 +143,11 @@ export default function Availability() {
                     borderRadius: 22,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: on ? Colors.white : Colors.surfaceRaised,
+                    backgroundColor: on ? Colors.accent : 'transparent',
+                    borderWidth: on ? 0 : 1,
+                    borderColor: Colors.outline,
                   }}>
-                  <T variant="label" color={on ? Colors.onAccent : Colors.textSecondary} style={{ fontSize: 13 }}>
+                  <T variant="label" color={on ? Colors.onAccent : Colors.text} style={{ fontSize: 13, fontWeight: '800' }}>
                     {name.slice(0, 1)}
                   </T>
                 </Pressable>

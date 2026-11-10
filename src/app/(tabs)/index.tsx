@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityCard, PingStories } from '@/components/cards';
 import { Icon } from '@/components/icon';
-import { AvatarStack, Button, Card, Empty, Header, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { AvatarStack, Button, Empty, Header, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { errorMessage, notify } from '@/lib/alert';
@@ -114,7 +114,7 @@ export default function Home() {
           pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
         ]}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <T variant="title" color={Colors.onAccent} style={{ fontWeight: '800' }}>
+          <T variant="display" color={Colors.onAccent}>
             I&apos;m free
           </T>
           <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.onAccent, alignItems: 'center', justifyContent: 'center' }}>
@@ -146,14 +146,14 @@ export default function Home() {
             const people = o.friendIds.map((id) => data.profiles[id]);
             const label = formatRange(o.start, o.end);
             return (
-              <Card key={key}>
+              <View key={key} style={{ gap: Spacing.sm, paddingVertical: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.hairline }}>
                 <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <View style={{ gap: 2 }}>
                     <T variant="overline" color={Colors.accent}>
                       {formatDay(o.start)}
                     </T>
-                    <T variant="title">
-                      {formatTime(o.start)} – {formatTime(o.end)}
+                    <T variant="largeTitle">
+                      {formatTime(o.start)}–{formatTime(o.end)}
                     </T>
                   </View>
                   <AvatarStack profiles={people} size={30} />
@@ -184,7 +184,7 @@ export default function Home() {
                     onPress={() => nudge(o.friendIds, label, key)}
                   />
                 </Row>
-              </Card>
+              </View>
             );
           })}
         </Section>
@@ -213,15 +213,14 @@ export default function Home() {
               </T>
             </Pressable>
           }>
-          <Card style={{ padding: 0, gap: 0 }}>
-            {data.suggestions.map((s, i) => (
+          <View>
+            {data.suggestions.map((s) => (
               <Row
                 key={s.start}
                 style={{
-                  paddingHorizontal: Spacing.lg + 2,
                   paddingVertical: Spacing.md + 2,
                   justifyContent: 'space-between',
-                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopWidth: StyleSheet.hairlineWidth,
                   borderTopColor: Colors.hairline,
                 }}>
                 <View>
@@ -233,7 +232,7 @@ export default function Home() {
                 <Button title="Mark free" size="sm" variant="secondary" onPress={() => markFree(s.start, s.end)} />
               </Row>
             ))}
-          </Card>
+          </View>
         </Section>
       ) : null}
     </Screen>

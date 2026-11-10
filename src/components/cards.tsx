@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { Colors, Spacing } from '@/constants/theme';
 import type { ActivityWithPeople } from '@/lib/api';
@@ -7,7 +7,7 @@ import { formatTime, timeLeft } from '@/lib/time';
 import type { Ping, Profile } from '@/lib/types';
 
 import { Icon } from './icon';
-import { Glass, LiquidGradient, TiltCard, paletteFor } from './liquid';
+import { LiquidGradient, TiltCard, paletteFor } from './liquid';
 import { Avatar, AvatarStack, Row, T, displayName } from './ui';
 
 export function ActivityCard({
@@ -23,7 +23,6 @@ export function ActivityCard({
 }) {
   const going = activity.members.filter((m) => m.status === 'going');
   const imIn = activity.members.some((m) => m.user_id === meId);
-  const host = profiles[activity.host_id];
   const palette = paletteFor(activity.id);
   const d = new Date(activity.starts_at);
   return (
@@ -32,45 +31,39 @@ export function ActivityCard({
       glow={palette[0]}
       onPress={() => router.push({ pathname: '/activity/[id]', params: { id: activity.id } })}>
       <LiquidGradient palette={palette}>
-        <View style={{ flex: 1, padding: 10, justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, padding: 18, justifyContent: 'space-between' }}>
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Glass radius={16} style={{ width: 58, height: 62, alignItems: 'center', justifyContent: 'center' }}>
-              <T variant="overline" color="rgba(255,255,255,0.75)" style={{ fontSize: 10, lineHeight: 12 }}>
-                {d.toLocaleDateString(undefined, { month: 'short' })}
-              </T>
-              <T variant="title" color="#fff" style={{ fontSize: 26, lineHeight: 30, fontWeight: '800' }}>
-                {d.getDate()}
-              </T>
-            </Glass>
-            <Row gap={8}>
-              {imIn ? (
-                <Glass radius={999} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
-                  <T variant="caption" color="#fff" style={{ fontWeight: '700', fontSize: 12 }}>
-                    {activity.host_id === meId ? 'Hosting' : 'Going'}
-                  </T>
-                </Glass>
-              ) : null}
-              <Text style={{ fontSize: 34 }}>{activity.emoji}</Text>
-            </Row>
-          </Row>
-
-          <Glass radius={20} style={{ padding: 14, gap: 8 }}>
-            <View style={{ gap: 2 }}>
-              <T variant="heading" color="#fff" numberOfLines={1} style={{ fontSize: 21, fontWeight: '800' }}>
-                {activity.title}
-              </T>
-              <T variant="caption" color="rgba(255,255,255,0.75)" numberOfLines={1}>
-                {d.toLocaleDateString(undefined, { weekday: 'short' })} · {formatTime(activity.starts_at)}
-                {activity.location ? ` · ${activity.location}` : ''}
+            <View style={{ backgroundColor: '#000', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+              <T variant="caption" color="#fff" style={{ fontWeight: '800', fontSize: 12, letterSpacing: 0.6 }}>
+                {d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
               </T>
             </View>
+            {imIn ? (
+              <View style={{ backgroundColor: '#000', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <T variant="caption" color={Colors.accent} style={{ fontWeight: '800', fontSize: 12 }}>
+                  {activity.host_id === meId ? 'HOSTING' : 'GOING'}
+                </T>
+              </View>
+            ) : null}
+          </Row>
+
+          <View style={{ gap: 6 }}>
+            <T variant="largeTitle" color="#fff" numberOfLines={2}>
+              {activity.title}
+            </T>
             <Row style={{ justifyContent: 'space-between' }}>
-              <AvatarStack profiles={going.map((m) => profiles[m.user_id])} size={24} borderColor="rgba(0,0,0,0.35)" />
-              <T variant="caption" color="rgba(255,255,255,0.75)">
-                {going.length} going{host && activity.host_id !== meId ? ` · ${displayName(host)}` : ''}
+              <T variant="label" color="rgba(255,255,255,0.8)" numberOfLines={1} style={{ flex: 1 }}>
+                {formatTime(activity.starts_at)}
+                {activity.location ? ` · ${activity.location}` : ''}
               </T>
+              <Row gap={8}>
+                <AvatarStack profiles={going.map((m) => profiles[m.user_id])} size={24} max={3} borderColor="#000" />
+                <T variant="label" color="#fff">
+                  {going.length}
+                </T>
+              </Row>
             </Row>
-          </Glass>
+          </View>
         </View>
       </LiquidGradient>
     </TiltCard>
@@ -121,12 +114,12 @@ export function PingStories({
             key={p.id}
             onPress={() => router.push({ pathname: '/ping/[id]', params: { id: p.id } })}
             style={{ alignItems: 'center', gap: 8, width: 68 }}>
-            <Avatar profile={profiles[p.sender_id]} size={56} ring={fresh ? Colors.accent : Colors.surfaceRaised} />
+            <Avatar profile={profiles[p.sender_id]} size={56} ring={fresh ? Colors.pink : Colors.surfaceRaised} />
             <View style={{ alignItems: 'center' }}>
               <T variant="caption" color={Colors.text} numberOfLines={1} style={{ fontWeight: '600' }}>
                 {mine ? 'You' : displayName(profiles[p.sender_id]).split(' ')[0]}
               </T>
-              <T variant="caption" style={{ fontSize: 11, lineHeight: 14 }} color={fresh ? Colors.accent : Colors.textTertiary}>
+              <T variant="caption" style={{ fontSize: 11, lineHeight: 14 }} color={fresh ? Colors.pink : Colors.textTertiary}>
                 {timeLeft(p.expires_at)}
               </T>
             </View>

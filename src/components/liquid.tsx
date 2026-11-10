@@ -23,15 +23,12 @@ import Animated, {
 import { Radius } from '@/constants/theme';
 
 // ─── Palettes ────────────────────────────────────────────────
+// Brand-only palettes: acid green + neon pink on black, in different arrangements.
 export const PALETTES = [
-  ['#FF5F6D', '#FFC371', '#6A11CB'], // sunset
-  ['#00C6FF', '#7B2FF7', '#0A1A4F'], // electric
-  ['#F7971E', '#FF2E63', '#3A0CA3'], // ember
-  ['#38EF7D', '#11998E', '#0B2E33'], // mint
-  ['#FC466B', '#3F5EFB', '#120A2A'], // neon
-  ['#D4FF3F', '#00B894', '#0A2A3D'], // lime
-  ['#F72585', '#B5179E', '#240046'], // magenta
-  ['#FFD166', '#EF476F', '#26115A'], // citrus
+  ['#B4FF00', '#FF2D95', '#000000'],
+  ['#FF2D95', '#B4FF00', '#000000'],
+  ['#B4FF00', '#0A3A00', '#000000'],
+  ['#FF2D95', '#4A0026', '#000000'],
 ] as const;
 
 export type Palette = (typeof PALETTES)[number];
@@ -102,8 +99,8 @@ export function LiquidGradient({ palette, children }: { palette: Palette; childr
         ) : null}
         {/* Legibility scrim + film grain–like depth at the bottom */}
         <LinearGradient
-          colors={['rgba(10,10,11,0)', 'rgba(10,10,11,0.15)', 'rgba(10,10,11,0.55)']}
-          locations={[0, 0.5, 1]}
+          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.88)']}
+          locations={[0.15, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />
       </View>

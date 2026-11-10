@@ -32,10 +32,10 @@ export function T({ variant = 'body', color, style, ...rest }: TextProps & { var
 
 const display = Fonts?.display;
 const text = StyleSheet.create({
-  display: { fontFamily: display, fontSize: 48, lineHeight: 50, fontWeight: '800', letterSpacing: -1.6 },
-  largeTitle: { fontFamily: display, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -0.9 },
-  title: { fontFamily: display, fontSize: 26, lineHeight: 31, fontWeight: '700', letterSpacing: -0.6 },
-  heading: { fontFamily: display, fontSize: 19, lineHeight: 24, fontWeight: '700', letterSpacing: -0.3 },
+  display: { fontFamily: display, fontSize: 52, lineHeight: 52, fontWeight: '900', letterSpacing: -2 },
+  largeTitle: { fontFamily: display, fontSize: 38, lineHeight: 42, fontWeight: '900', letterSpacing: -1.4 },
+  title: { fontFamily: display, fontSize: 28, lineHeight: 32, fontWeight: '800', letterSpacing: -0.9 },
+  heading: { fontFamily: display, fontSize: 20, lineHeight: 24, fontWeight: '800', letterSpacing: -0.4 },
   body: { fontFamily: display, fontSize: 16, lineHeight: 22, fontWeight: '400', letterSpacing: -0.2 },
   label: { fontFamily: display, fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.15 },
   caption: { fontFamily: display, fontSize: 13, lineHeight: 18, fontWeight: '500' },
@@ -102,7 +102,7 @@ export function Card({
   onPress?: () => void;
   raised?: boolean;
 }) {
-  const base = [styles.card, raised && { backgroundColor: Colors.surfaceRaised }, style];
+  const base = [styles.card, raised && styles.cardRaised, style];
   if (!onPress) return <View style={base}>{children}</View>;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [base, pressed && styles.pressed]}>
@@ -131,7 +131,7 @@ export function Section({ title, action, children }: { title: string; action?: R
 export function List({ children }: { children: ReactNode }) {
   const items = Children.toArray(children).filter(isValidElement);
   return (
-    <View style={[styles.card, { padding: 0, gap: 0, overflow: 'hidden' }]}>
+    <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: Colors.hairline }}>
       {items.map((child, i) => (
         <Fragment key={i}>
           {i > 0 ? <View style={styles.separator} /> : null}
@@ -164,11 +164,7 @@ export function ListRow({
   const content = (
     <Row gap={Spacing.md} style={styles.listRow}>
       {left}
-      {icon ? (
-        <View style={styles.listIcon}>
-          <Icon name={icon} size={17} color={destructive ? Colors.danger : Colors.text} />
-        </View>
-      ) : null}
+      {icon ? <Icon name={icon} size={20} color={destructive ? Colors.danger : Colors.text} /> : null}
       <View style={{ flex: 1, gap: 1 }}>
         <T variant="label" color={destructive ? Colors.danger : Colors.text} numberOfLines={1}>
           {title}
@@ -211,7 +207,7 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   size?: 'sm' | 'md' | 'lg';
 }) {
-  const bg = { primary: Colors.accent, white: Colors.white, secondary: Colors.surfaceRaised, ghost: 'transparent', danger: 'transparent' }[variant];
+  const bg = { primary: Colors.accent, white: Colors.accent, secondary: 'transparent', ghost: 'transparent', danger: 'transparent' }[variant];
   const fg = { primary: Colors.onAccent, white: Colors.onAccent, secondary: Colors.text, ghost: Colors.text, danger: Colors.danger }[variant];
   const height = { sm: 36, md: 48, lg: 56 }[size];
   return (
@@ -221,6 +217,7 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: bg, height, paddingHorizontal: size === 'sm' ? 14 : 22, opacity: disabled ? 0.4 : 1 },
+        variant === 'secondary' && { borderWidth: 1, borderColor: Colors.outline },
         pressed && styles.pressed,
         style,
       ]}>
@@ -229,7 +226,7 @@ export function Button({
       ) : (
         <Row gap={8}>
           {icon ? <Icon name={icon} size={size === 'sm' ? 14 : 17} color={fg} /> : null}
-          <T variant="label" color={fg} style={size === 'lg' ? { fontSize: 17, fontWeight: '700' } : size === 'sm' ? { fontSize: 14 } : undefined}>
+          <T variant="label" color={fg} style={size === 'lg' ? { fontSize: 17, fontWeight: '800' } : size === 'sm' ? { fontSize: 14, fontWeight: '700' } : { fontWeight: '700' }}>
             {title}
           </T>
         </Row>
@@ -266,11 +263,11 @@ export function Chip({
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: selected ? Colors.white : Colors.surfaceRaised },
+        selected ? { backgroundColor: Colors.accent, borderColor: Colors.accent } : { backgroundColor: 'transparent', borderColor: Colors.outline },
         pressed && styles.pressed,
         style,
       ]}>
-      <T variant="label" color={selected ? Colors.onAccent : Colors.textSecondary} style={{ fontSize: 14 }}>
+      <T variant="label" color={selected ? Colors.onAccent : Colors.text} style={{ fontSize: 14, fontWeight: '700' }}>
         {label}
       </T>
     </Pressable>
@@ -292,10 +289,10 @@ export function Input({ label, style, ...props }: TextInputProps & { label?: str
   );
 }
 
-export function Badge({ label, tone = 'accent' }: { label: string; tone?: 'accent' | 'muted' }) {
+export function Badge({ label, tone = 'accent' }: { label: string; tone?: 'accent' | 'pink' | 'muted' }) {
   return (
-    <View style={[styles.badge, { backgroundColor: tone === 'accent' ? Colors.accentDim : Colors.surfaceRaised }]}>
-      <T variant="caption" color={tone === 'accent' ? Colors.accent : Colors.textSecondary} style={{ fontWeight: '700', fontSize: 12 }}>
+    <View style={[styles.badge, { backgroundColor: tone === 'accent' ? Colors.accentDim : tone === 'pink' ? Colors.pinkDim : 'transparent' }]}>
+      <T variant="caption" color={tone === 'accent' ? Colors.accent : tone === 'pink' ? Colors.pink : Colors.textSecondary} style={{ fontWeight: '800', fontSize: 12 }}>
         {label}
       </T>
     </View>
@@ -303,8 +300,6 @@ export function Badge({ label, tone = 'accent' }: { label: string; tone?: 'accen
 }
 
 // ─── People ──────────────────────────────────────────────────
-const AVATAR_TONES = ['#3B3355', '#2E4A3D', '#4F3A30', '#2D3E57', '#523049', '#47462D', '#2F4B4E', '#4A2F2F'];
-
 export const displayName = (p?: Profile | null) => p?.display_name || (p ? `@${p.username}` : 'Someone');
 
 function initials(p?: Profile | null) {
@@ -314,12 +309,6 @@ function initials(p?: Profile | null) {
   return letters.toUpperCase();
 }
 
-function toneFor(id?: string) {
-  let h = 0;
-  for (const c of id ?? '') h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return AVATAR_TONES[h % AVATAR_TONES.length];
-}
-
 export function Avatar({ profile, size = 44, ring }: { profile?: Profile | null; size?: number; ring?: string }) {
   const inner = (
     <View
@@ -327,11 +316,11 @@ export function Avatar({ profile, size = 44, ring }: { profile?: Profile | null;
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: toneFor(profile?.id),
+        backgroundColor: Colors.surfaceRaised,
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-      <Text style={{ color: Colors.text, fontWeight: '700', fontSize: size * 0.36, letterSpacing: 0.3, fontFamily: display }}>
+      <Text style={{ color: Colors.text, fontWeight: '800', fontSize: size * 0.36, letterSpacing: 0.3, fontFamily: display }}>
         {initials(profile)}
       </Text>
     </View>
@@ -378,7 +367,7 @@ export function AvatarStack({
 export function DateBlock({ date, size = 56 }: { date: string | number; size?: number }) {
   const d = new Date(date);
   return (
-    <View style={[styles.dateBlock, { width: size, height: size }]}>
+    <View style={{ width: size, alignItems: 'flex-start' }}>
       <T variant="overline" color={Colors.accent} style={{ fontSize: 10, lineHeight: 12 }}>
         {d.toLocaleDateString(undefined, { month: 'short' })}
       </T>
@@ -392,20 +381,14 @@ export function DateBlock({ date, size = 56 }: { date: string | number; size?: n
 // ─── Feedback ────────────────────────────────────────────────
 export function Empty({ icon, title, body, action }: { icon: IconName; title: string; body?: string; action?: ReactNode }) {
   return (
-    <Card style={{ alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xxl }}>
-      <View style={styles.emptyIcon}>
-        <Icon name={icon} size={22} color={Colors.textSecondary} />
-      </View>
-      <T variant="heading" style={{ textAlign: 'center', marginTop: Spacing.xs }}>
+    <View style={{ alignItems: 'flex-start', gap: Spacing.sm, paddingVertical: Spacing.sm }}>
+      <Icon name={icon} size={26} color={Colors.accent} />
+      <T variant="title" style={{ marginTop: Spacing.xs }}>
         {title}
       </T>
-      {body ? (
-        <T variant="caption" style={{ textAlign: 'center', maxWidth: 280 }}>
-          {body}
-        </T>
-      ) : null}
+      {body ? <T variant="body" color={Colors.textSecondary}>{body}</T> : null}
       {action ? <View style={{ marginTop: Spacing.sm }}>{action}</View> : null}
-    </Card>
+    </View>
   );
 }
 
@@ -427,55 +410,31 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     gap: Spacing.xl + 4,
   },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
+  card: { gap: Spacing.md },
+  cardRaised: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg },
   pressed: { opacity: 0.7, transform: [{ scale: 0.985 }] },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.hairline, marginLeft: 58 },
-  listRow: { paddingHorizontal: 14, paddingVertical: 12, minHeight: 56 },
-  listIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: Colors.surfaceRaised,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.hairline },
+  listRow: { paddingVertical: 14, minHeight: 58 },
   button: { borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.surfaceRaised,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.outline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chip: { borderRadius: Radius.pill, paddingHorizontal: 15, paddingVertical: 9 },
+  chip: { borderRadius: Radius.pill, paddingHorizontal: 15, paddingVertical: 8, borderWidth: 1 },
   input: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    paddingHorizontal: 16,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.outline,
+    paddingHorizontal: 0,
     paddingVertical: 14,
     fontSize: 16,
     color: Colors.text,
     fontFamily: display,
   },
   badge: { borderRadius: Radius.pill, paddingHorizontal: 9, paddingVertical: 3 },
-  dateBlock: {
-    borderRadius: Radius.md,
-    backgroundColor: Colors.surfaceRaised,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.surfaceRaised,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
