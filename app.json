@@ -50,7 +50,9 @@
           "color": "#141414",
           "defaultChannel": "pings"
         }
-      ]
+      ],
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

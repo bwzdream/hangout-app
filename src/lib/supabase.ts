@@ -2,8 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+// The project URL and publishable key are public (they ship inside every app build),
+// so they're safe to keep here as defaults. Override them with a .env file.
+const DEFAULT_URL = 'https://hppuapgiyzxtutgvkxid.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_Cmt7O12AI-aBmj0etETvXQ_DZ8anJyl';
+
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL || DEFAULT_URL;
+const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_KEY;
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 

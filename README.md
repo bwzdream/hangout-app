@@ -46,7 +46,9 @@ npm install
    ```
 4. For quick testing, you can turn off "Confirm email" under **Authentication → Providers → Email**.
 
-### 3. Environment
+### 3. Environment (optional)
+
+The app already points at the project's Supabase backend. Only create `.env` to use a different project or add a GIPHY key.
 
 ```bash
 cp .env.example .env
