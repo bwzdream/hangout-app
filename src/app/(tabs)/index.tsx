@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { ActivityCard, PingStories } from '@/components/cards';
-import { Icon } from '@/components/icon';
-import { AvatarStack, Button, Empty, Header, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { PopButton, Sticker } from '@/components/playful';
+import { AvatarStack, Button, Empty, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { errorMessage, notify } from '@/lib/alert';
 import {
@@ -28,13 +28,17 @@ function joinNames(names: string[]) {
   return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
 }
 
+function dayPhrase(ms: number) {
+  const d = formatDay(ms);
+  return d === 'Today' || d === 'Tomorrow' ? d.toLowerCase() : `on ${d}`;
+}
+
 export default function Home() {
   const { session, profile } = useAuth();
   const meId = session?.user.id;
-  const [nudged, setNudged] = useState<Set<string>>(new Set());
-  const [today] = useState(() =>
-    new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
-  );
+  const { width } = useWindowDimensions();
+  const [nudged, setNudged] = useState(false);
+  const [today] = useState(() => new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
 
   const { data, loading, refreshing, refresh, reload } = useData(async () => {
     if (!meId) return null;
@@ -48,15 +52,15 @@ export default function Home() {
     const friendIds = friends.friends.map((f) => f.id);
     const availability = await getAvailability([meId, ...friendIds], range);
     const { [meId]: mine, ...theirs } = availability;
-    const overlaps = mine ? groupOverlaps(findOverlaps(mine, theirs, range)).slice(0, 5) : [];
-    const suggestions = mine ? suggestFreeTime(mine, range, 90, 3) : [];
+    const overlaps = mine ? groupOverlaps(findOverlaps(mine, theirs, range)) : [];
+    const suggestion = mine ? suggestFreeTime(mine, range, 90, 1)[0] ?? null : null;
     const memberIds = activities.flatMap((a) => [a.host_id, ...a.members.map((m) => m.user_id)]);
     const profiles = {
       ...(await getProfiles([...memberIds, ...pings.map((p) => p.sender_id)])),
       ...Object.fromEntries(friends.friends.map((f) => [f.id, f])),
     };
     if (profile) profiles[profile.id] = profile;
-    return { friends, pings, viewed, activities, overlaps, suggestions, profiles };
+    return { friends, pings, viewed, activities, overlaps, suggestion, profiles };
   });
 
   // Live: refresh when a new ping or RSVP lands.
@@ -74,166 +78,146 @@ export default function Home() {
 
   if (loading && !data) return <Loading />;
 
-  const nudge = async (friendIds: string[], label: string, key: string) => {
+  const best = data?.overlaps[0];
+  const more = (data?.overlaps.length ?? 0) - 1;
+  const firstName = (profile?.display_name || profile?.username || 'there').split(' ')[0];
+  const cardWidth = Math.min(width, MaxContentWidth) - 40 - 36;
+
+  const nudge = async () => {
+    if (!best) return;
     try {
-      await Promise.all(friendIds.map((id) => nudgeFriend(id, label)));
-      setNudged((s) => new Set(s).add(key));
+      await Promise.all(best.friendIds.map((id) => nudgeFriend(id, formatRange(best.start, best.end))));
+      setNudged(true);
     } catch (e) {
       notify("Couldn't send nudge", errorMessage(e));
     }
   };
 
-  const markFree = async (start: number, end: number) => {
+  const markFree = async () => {
+    if (!data?.suggestion) return;
     try {
-      await addFreeSlot(new Date(start).toISOString(), new Date(end).toISOString());
+      await addFreeSlot(new Date(data.suggestion.start).toISOString(), new Date(data.suggestion.end).toISOString());
       reload();
     } catch (e) {
       notify('Something went wrong', errorMessage(e));
     }
   };
 
-  const firstName = (profile?.display_name || profile?.username || '').split(' ')[0];
-
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
-      <Header
-        overline={today}
-        title={firstName ? `Hey, ${firstName}` : 'Hey there'}
-        right={<IconButton icon="plus" label="New hangout" onPress={() => router.push('/activity/new')} />}
-      />
-
-      <Pressable
-        onPress={() => router.push('/ping/new')}
-        style={({ pressed }) => [
-          {
-            backgroundColor: Colors.accent,
-            borderRadius: Radius.xl,
-            padding: Spacing.xl,
-            gap: Spacing.xs,
-          },
-          pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
-        ]}>
+      <View style={{ gap: Spacing.xl }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <T variant="display" color={Colors.onAccent}>
-            I&apos;m free
-          </T>
-          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.onAccent, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="bolt" size={18} color={Colors.accent} />
-          </View>
+          <T variant="caption">{today}</T>
+          <IconButton icon="plus" label="New hangout" onPress={() => router.push('/activity/new')} />
         </Row>
-        <T variant="body" color={Colors.onAccent} style={{ fontWeight: '500', opacity: 0.65 }}>
-          Let your friends know. Disappears when you&apos;re not.
+        <T variant="display">
+          Hey {firstName},{'\n'}free today?
         </T>
-      </Pressable>
+        <PopButton onPress={() => router.push('/ping/new')}>
+          <Row style={{ padding: 22, justifyContent: 'space-between' }}>
+            <View style={{ gap: 2, flex: 1 }}>
+              <T variant="largeTitle" color={Colors.onAccent}>
+                I&apos;m free
+              </T>
+              <T variant="body" color={Colors.onAccent} style={{ opacity: 0.7 }}>
+                Ping your friends. It disappears later.
+              </T>
+            </View>
+            <Sticker icon="bolt" size={56} />
+          </Row>
+        </PopButton>
+      </View>
 
-      <Section title="Live now">
-        <PingStories pings={data?.pings ?? []} profiles={data?.profiles ?? {}} viewed={data?.viewed ?? new Set()} meId={meId} />
-      </Section>
+      {data && data.pings.length > 0 ? (
+        <Section title="Live now">
+          <PingStories pings={data.pings} profiles={data.profiles} viewed={data.viewed} meId={meId} />
+        </Section>
+      ) : null}
 
       {data && data.friends.friends.length === 0 ? (
         <Empty
           icon="addPerson"
           title="Bring your people"
-          body="Add friends to see when you're free at the same time."
-          action={<Button title="Find friends" variant="white" size="sm" onPress={() => router.push('/friends')} />}
+          body="Add a few friends to see when you're free at the same time."
+          action={<Button title="Find friends" onPress={() => router.push('/friends')} />}
         />
       ) : null}
 
-      {data && data.overlaps.length > 0 ? (
+      {best && data ? (
         <Section title="Free together">
-          {data.overlaps.map((o) => {
-            const key = `${o.start}-${o.friendIds.join(',')}`;
-            const people = o.friendIds.map((id) => data.profiles[id]);
-            const label = formatRange(o.start, o.end);
-            return (
-              <View key={key} style={{ gap: Spacing.sm, paddingVertical: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.hairline }}>
-                <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <View style={{ gap: 2 }}>
-                    <T variant="overline" color={Colors.accentInk}>
-                      {formatDay(o.start)}
-                    </T>
-                    <T variant="largeTitle">
-                      {formatTime(o.start)}–{formatTime(o.end)}
-                    </T>
-                  </View>
-                  <AvatarStack profiles={people} size={30} />
-                </Row>
-                <T variant="caption">You and {joinNames(people.map((p) => displayName(p)))} are both free.</T>
-                <Row style={{ marginTop: Spacing.xs }}>
-                  <Button
-                    title="Make plans"
-                    size="sm"
-                    variant="white"
-                    onPress={() =>
-                      router.push({
-                        pathname: '/activity/new',
-                        params: {
-                          start: String(o.start),
-                          end: String(Math.min(o.end, o.start + 3 * 3600000)),
-                          invite: o.friendIds.join(','),
-                        },
-                      })
-                    }
-                  />
-                  <Button
-                    title={nudged.has(key) ? 'Nudged' : 'Nudge'}
-                    icon={nudged.has(key) ? 'check' : 'hand'}
-                    size="sm"
-                    variant="secondary"
-                    disabled={nudged.has(key)}
-                    onPress={() => nudge(o.friendIds, label, key)}
-                  />
-                </Row>
-              </View>
-            );
-          })}
+          <View style={{ backgroundColor: Colors.surface, borderRadius: 28, padding: 24, gap: Spacing.lg }}>
+            <AvatarStack profiles={best.friendIds.map((id) => data.profiles[id])} size={44} />
+            <View style={{ gap: 4 }}>
+              <T variant="label" color={Colors.textSecondary}>
+                You & {joinNames(best.friendIds.map((id) => displayName(data.profiles[id]).split(' ')[0]))}
+              </T>
+              <T variant="largeTitle">
+                {formatDay(best.start)}, {formatTime(best.start)}
+              </T>
+              <T variant="body" color={Colors.textSecondary}>
+                until {formatTime(best.end)}
+              </T>
+            </View>
+            <Row gap={Spacing.md}>
+              <Button
+                title="Make plans"
+                onPress={() =>
+                  router.push({
+                    pathname: '/activity/new',
+                    params: {
+                      start: String(best.start),
+                      end: String(Math.min(best.end, best.start + 3 * 3600000)),
+                      invite: best.friendIds.join(','),
+                    },
+                  })
+                }
+              />
+              <Button title={nudged ? 'Nudged' : 'Nudge'} icon={nudged ? 'check' : 'hand'} variant="secondary" disabled={nudged} onPress={nudge} />
+            </Row>
+          </View>
+          {more > 0 ? (
+            <Pressable onPress={() => router.push('/calendar')} hitSlop={8}>
+              <T variant="label" style={{ textDecorationLine: 'underline' }}>
+                {more} more time{more === 1 ? '' : 's'} you&apos;re free together
+              </T>
+            </Pressable>
+          ) : null}
         </Section>
       ) : null}
 
       <Section title="Coming up">
         {data && data.activities.length > 0 ? (
-          data.activities.map((a) => <ActivityCard key={a.id} activity={a} profiles={data.profiles} meId={meId} />)
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={cardWidth + 14}
+            decelerationRate="fast"
+            style={{ marginHorizontal: -20, overflow: 'visible' }}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 14, paddingBottom: 24 }}>
+            {data.activities.map((a) => (
+              <View key={a.id} style={{ width: data.activities.length === 1 ? cardWidth + 36 : cardWidth }}>
+                <ActivityCard activity={a} profiles={data.profiles} meId={meId} height={280} />
+              </View>
+            ))}
+          </ScrollView>
         ) : (
           <Empty
             icon="calendar"
-            title="Nothing planned"
-            body="Start something and let friends join in."
-            action={<Button title="New hangout" size="sm" variant="white" onPress={() => router.push('/activity/new')} />}
+            title="Nothing planned yet"
+            body="Start something and let friends jump in."
+            action={<Button title="New hangout" onPress={() => router.push('/activity/new')} />}
           />
         )}
       </Section>
 
-      {data && data.suggestions.length > 0 ? (
-        <Section
-          title="Open on your calendar"
-          action={
-            <Pressable onPress={() => router.push('/availability')} hitSlop={8}>
-              <T variant="caption" color={Colors.text} style={{ fontWeight: '600' }}>
-                Routine
-              </T>
-            </Pressable>
-          }>
-          <View>
-            {data.suggestions.map((s) => (
-              <Row
-                key={s.start}
-                style={{
-                  paddingVertical: Spacing.md + 2,
-                  justifyContent: 'space-between',
-                  borderTopWidth: StyleSheet.hairlineWidth,
-                  borderTopColor: Colors.hairline,
-                }}>
-                <View>
-                  <T variant="label">{formatDay(s.start)}</T>
-                  <T variant="caption">
-                    {formatTime(s.start)} – {formatTime(s.end)}
-                  </T>
-                </View>
-                <Button title="Mark free" size="sm" variant="secondary" onPress={() => markFree(s.start, s.end)} />
-              </Row>
-            ))}
-          </View>
-        </Section>
+      {data?.suggestion ? (
+        <View style={{ gap: Spacing.md }}>
+          <T variant="body" color={Colors.textSecondary}>
+            Your calendar looks open {dayPhrase(data.suggestion.start)}, {formatTime(data.suggestion.start)}–
+            {formatTime(data.suggestion.end)}.
+          </T>
+          <Button title="Mark me free" variant="secondary" size="sm" onPress={markFree} style={{ alignSelf: 'flex-start' }} />
+        </View>
       ) : null}
     </Screen>
   );

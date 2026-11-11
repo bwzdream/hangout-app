@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Fonts, MaxContentWidth, Radius, Spacing, isLight } from '@/constants/theme';
 import type { Profile } from '@/lib/types';
 
+import { Bouncy } from './bouncy';
 import { Icon, type IconName } from './icon';
 
 // ─── Text ────────────────────────────────────────────────────
@@ -136,9 +137,11 @@ export function Row({ children, style, gap = Spacing.sm }: { children: ReactNode
 
 export function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <View style={{ gap: Spacing.md }}>
-      <Row style={{ justifyContent: 'space-between', minHeight: 24 }}>
-        <T variant="overline">{title}</T>
+    <View style={{ gap: Spacing.lg }}>
+      <Row style={{ justifyContent: 'space-between', minHeight: 28 }}>
+        <T variant="title" style={{ fontSize: 26, lineHeight: 30 }}>
+          {title}
+        </T>
         {action}
       </Row>
       {children}
@@ -228,16 +231,15 @@ export function Button({
 }) {
   const bg = { primary: Colors.cta, white: Colors.cta, secondary: 'transparent', ghost: 'transparent', danger: 'transparent' }[variant];
   const fg = { primary: Colors.onCta, white: Colors.onCta, secondary: Colors.text, ghost: Colors.text, danger: Colors.danger }[variant];
-  const height = { sm: 36, md: 48, lg: 56 }[size];
+  const height = { sm: 40, md: 52, lg: 60 }[size];
   return (
-    <Pressable
+    <Bouncy
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
+      style={[
         styles.button,
-        { backgroundColor: bg, height, paddingHorizontal: size === 'sm' ? 14 : 22, opacity: disabled ? 0.4 : 1 },
-        variant === 'secondary' && { borderWidth: 1, borderColor: Colors.outline },
-        pressed && styles.pressed,
+        { backgroundColor: bg, height, paddingHorizontal: size === 'sm' ? 16 : 24, opacity: disabled ? 0.4 : 1 },
+        variant === 'secondary' && { borderWidth: 1.5, borderColor: Colors.text },
         style,
       ]}>
       {loading ? (
@@ -250,19 +252,15 @@ export function Button({
           </T>
         </Row>
       )}
-    </Pressable>
+    </Bouncy>
   );
 }
 
 export function IconButton({ icon, onPress, label }: { icon: IconName; onPress: () => void; label: string }) {
   return (
-    <Pressable
-      accessibilityLabel={label}
-      onPress={onPress}
-      hitSlop={8}
-      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+    <Bouncy accessibilityLabel={label} onPress={onPress} style={styles.iconButton}>
       <Icon name={icon} size={18} />
-    </Pressable>
+    </Bouncy>
   );
 }
 
@@ -278,18 +276,17 @@ export function Chip({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable
+    <Bouncy
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.chip,
-        selected ? { backgroundColor: Colors.accent, borderColor: Colors.accent } : { backgroundColor: 'transparent', borderColor: Colors.outline },
-        pressed && styles.pressed,
+        selected ? { backgroundColor: Colors.accent, borderColor: Colors.text } : { backgroundColor: 'transparent', borderColor: Colors.outline },
         style,
       ]}>
-      <T variant="label" color={selected ? Colors.onAccent : Colors.text} style={{ fontSize: 14, fontWeight: '700' }}>
+      <T variant="label" color={selected ? Colors.onAccent : Colors.text} style={{ fontSize: 15, fontWeight: '600' }}>
         {label}
       </T>
-    </Pressable>
+    </Bouncy>
   );
 }
 
@@ -425,9 +422,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    gap: Spacing.xl + 4,
+    paddingHorizontal: 20,
+    paddingTop: Spacing.lg,
+    gap: 44,
   },
   card: { gap: Spacing.md },
   cardRaised: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.lg },
@@ -444,7 +441,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chip: { borderRadius: Radius.pill, paddingHorizontal: 15, paddingVertical: 8, borderWidth: 1 },
+  chip: { borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 11, borderWidth: 1.5 },
   input: {
     backgroundColor: 'transparent',
     borderBottomWidth: 1,

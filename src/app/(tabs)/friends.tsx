@@ -1,14 +1,33 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, Share } from 'react-native';
+import { Platform, Pressable, Share, View } from 'react-native';
 
-import { Avatar, Button, Empty, Header, IconButton, Input, List, ListRow, Loading, Screen, Section, T, displayName } from '@/components/ui';
-import { Colors } from '@/constants/theme';
+import { Icon } from '@/components/icon';
+import { Bouncy } from '@/components/playful';
+import { Avatar, Button, Header, Input, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { confirm, errorMessage, notify } from '@/lib/alert';
 import { acceptFriendRequest, getFriends, removeFriendship, searchProfiles, sendFriendRequest } from '@/lib/api';
 import type { Profile } from '@/lib/types';
 import { useAuth } from '@/providers/auth';
+
+const COLUMNS = 3;
+
+/** A friend as a big face with a name under it. */
+function Face({ profile, onPress, badge }: { profile: Profile; onPress?: () => void; badge?: React.ReactNode }) {
+  return (
+    <Bouncy onPress={onPress} style={{ width: `${100 / COLUMNS}%`, alignItems: 'center', gap: 8, paddingVertical: 10 }}>
+      <View>
+        <Avatar profile={profile} size={76} />
+        {badge ? <View style={{ position: 'absolute', right: -4, bottom: -4 }}>{badge}</View> : null}
+      </View>
+      <T variant="label" numberOfLines={1} style={{ maxWidth: 96 }}>
+        {displayName(profile).split(' ')[0]}
+      </T>
+    </Bouncy>
+  );
+}
 
 export default function Friends() {
   const { profile: me } = useAuth();
@@ -44,125 +63,130 @@ export default function Friends() {
 
   if (loading && !data) return <Loading />;
 
-  const avatar = (p: Profile) => <Avatar profile={p} size={36} />;
+  const searching = query.trim().length >= 2;
 
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
-      <Header title="Friends" right={<IconButton icon="share" label="Invite friends" onPress={invite} />} />
+      <Header title="Your people" />
 
-      <Input value={query} onChangeText={setQuery} placeholder="Search name or @username" autoCapitalize="none" autoCorrect={false} />
+      <Input value={query} onChangeText={setQuery} placeholder="Find someone by name or @username" autoCapitalize="none" autoCorrect={false} />
 
-      {query.length >= 2 ? (
-        <Section title="Results">
-          {results.length === 0 ? (
-            <T variant="caption">No one found. Send them an invite instead.</T>
-          ) : (
-            <List>
-              {results.map((p) => {
-                const f = data?.friendshipByUser[p.id];
-                const right = !f ? (
-                  <Button title="Add" size="sm" variant="white" onPress={() => run(() => sendFriendRequest(p.id))} />
+      {searching ? (
+        <View style={{ gap: Spacing.lg }}>
+          {results.length === 0 ? <T variant="body" color={Colors.textSecondary}>No one by that name yet. Send them an invite!</T> : null}
+          {results.map((p) => {
+            const f = data?.friendshipByUser[p.id];
+            return (
+              <Row key={p.id} gap={Spacing.lg}>
+                <Avatar profile={p} size={52} />
+                <View style={{ flex: 1 }}>
+                  <T variant="heading">{displayName(p)}</T>
+                  <T variant="caption">@{p.username}</T>
+                </View>
+                {!f ? (
+                  <Button title="Add" size="sm" onPress={() => run(() => sendFriendRequest(p.id))} />
                 ) : f.status === 'accepted' ? (
                   <T variant="caption">Friends</T>
                 ) : f.addressee_id === p.id ? (
                   <T variant="caption">Requested</T>
                 ) : (
                   <Button title="Accept" size="sm" onPress={() => run(() => acceptFriendRequest(f.id))} />
-                );
-                return <ListRow key={p.id} title={displayName(p)} subtitle={`@${p.username}`} left={avatar(p)} right={right} chevron={false} />;
-              })}
-            </List>
-          )}
-        </Section>
+                )}
+              </Row>
+            );
+          })}
+        </View>
       ) : null}
 
-      {data && data.incoming.length > 0 ? (
-        <Section title={`Requests · ${data.incoming.length}`}>
-          <List>
-            {data.incoming.map(({ friendship, profile }) => (
-              <ListRow
-                key={friendship.id}
-                title={displayName(profile)}
-                subtitle={`@${profile.username}`}
-                left={avatar(profile)}
-                chevron={false}
-                right={
-                  <>
-                    <Button title="Accept" size="sm" onPress={() => run(() => acceptFriendRequest(friendship.id))} />
-                    <IconButton icon="close" label="Decline" onPress={() => run(() => removeFriendship(friendship.id))} />
-                  </>
-                }
-              />
-            ))}
-          </List>
-        </Section>
-      ) : null}
+      {!searching && data && data.incoming.length > 0
+        ? data.incoming.map(({ friendship, profile }) => (
+            <View key={friendship.id} style={{ backgroundColor: Colors.accent, borderRadius: 28, padding: 22, gap: Spacing.lg }}>
+              <Row gap={Spacing.lg}>
+                <Avatar profile={profile} size={52} />
+                <View style={{ flex: 1 }}>
+                  <T variant="title" color={Colors.onAccent}>
+                    {displayName(profile).split(' ')[0]} wants to hang
+                  </T>
+                  <T variant="caption" color={Colors.onAccent} style={{ opacity: 0.7 }}>
+                    @{profile.username}
+                  </T>
+                </View>
+              </Row>
+              <Row gap={Spacing.md}>
+                <Button title="Accept" onPress={() => run(() => acceptFriendRequest(friendship.id))} />
+                <Pressable onPress={() => run(() => removeFriendship(friendship.id))} hitSlop={8}>
+                  <T variant="label" color={Colors.onAccent}>
+                    Not now
+                  </T>
+                </Pressable>
+              </Row>
+            </View>
+          ))
+        : null}
 
-      <Section
-        title={`Friends · ${data?.friends.length ?? 0}`}
-        action={
-          <Pressable onPress={() => router.push('/circles')} hitSlop={8}>
-            <T variant="caption" color={Colors.text} style={{ fontWeight: '600' }}>
-              Circles
-            </T>
-          </Pressable>
-        }>
-        {data && data.friends.length === 0 ? (
-          <Empty
-            icon="addPerson"
-            title="No friends yet"
-            body="Search above or share your invite."
-            action={<Button title="Invite friends" icon="share" size="sm" variant="white" onPress={invite} />}
-          />
-        ) : (
-          <List>
+      {!searching ? (
+        <Section
+          title={data && data.friends.length > 0 ? `Friends · ${data.friends.length}` : 'Friends'}
+          action={
+            <Pressable onPress={() => router.push('/circles')} hitSlop={8}>
+              <T variant="label" style={{ textDecorationLine: 'underline' }}>
+                Circles
+              </T>
+            </Pressable>
+          }>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
+            <Bouncy onPress={invite} style={{ width: `${100 / COLUMNS}%`, alignItems: 'center', gap: 8, paddingVertical: 10 }}>
+              <View
+                style={{
+                  width: 76,
+                  height: 76,
+                  borderRadius: 38,
+                  borderWidth: 2,
+                  borderColor: Colors.text,
+                  borderStyle: 'dashed',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Icon name="plus" size={26} color={Colors.text} />
+              </View>
+              <T variant="label">Invite</T>
+            </Bouncy>
             {(data?.friends ?? []).map((p) => (
-              <ListRow
+              <Face
                 key={p.id}
-                title={displayName(p)}
-                subtitle={`@${p.username}`}
-                left={avatar(p)}
-                chevron={false}
-                right={
-                  <Pressable
-                    hitSlop={8}
-                    onPress={async () => {
-                      const f = data?.friendshipByUser[p.id];
-                      if (f && (await confirm('Remove friend?', `${displayName(p)} won't see your free time anymore.`, 'Remove'))) {
-                        run(() => removeFriendship(f.id));
-                      }
-                    }}>
-                    <T variant="caption" color={Colors.textTertiary}>
-                      Remove
-                    </T>
-                  </Pressable>
-                }
+                profile={p}
+                onPress={async () => {
+                  const f = data?.friendshipByUser[p.id];
+                  if (f && (await confirm(displayName(p), `Remove ${displayName(p)} from your friends?`, 'Remove'))) {
+                    run(() => removeFriendship(f.id));
+                  }
+                }}
               />
             ))}
-          </List>
-        )}
-      </Section>
-
-      {data && data.outgoing.length > 0 ? (
-        <Section title="Pending">
-          <List>
-            {data.outgoing.map(({ friendship, profile }) => (
-              <ListRow
+            {(data?.outgoing ?? []).map(({ friendship, profile }) => (
+              <Face
                 key={friendship.id}
-                title={displayName(profile)}
-                subtitle={`@${profile.username}`}
-                left={avatar(profile)}
-                chevron={false}
-                right={
-                  <Pressable hitSlop={8} onPress={() => run(() => removeFriendship(friendship.id))}>
-                    <T variant="caption" color={Colors.textTertiary}>
-                      Cancel
+                profile={profile}
+                badge={
+                  <View style={{ backgroundColor: Colors.surfaceRaised, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                    <T variant="caption" style={{ fontSize: 11 }}>
+                      sent
                     </T>
-                  </Pressable>
+                  </View>
                 }
+                onPress={async () => {
+                  if (await confirm('Cancel request?', `Cancel your request to ${displayName(profile)}?`, 'Cancel request')) {
+                    run(() => removeFriendship(friendship.id));
+                  }
+                }}
               />
             ))}
-          </List>
+          </View>
+          {data && data.friends.length === 0 ? (
+            <T variant="body" color={Colors.textSecondary}>
+              Search above or tap Invite to bring your crew.
+            </T>
+          ) : null}
         </Section>
       ) : null}
     </Screen>
