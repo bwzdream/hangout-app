@@ -1,64 +1,27 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AudiencePicker, type Audience } from '@/components/audience-picker';
 import { GifPicker, type GifChoice } from '@/components/gif-picker';
 import { Icon } from '@/components/icon';
 import { PopButton, Sticker } from '@/components/playful';
-import { TimeRangePicker, type TimeRange } from '@/components/time-picker';
+import { WhenField } from '@/components/when-field';
 import { Chip, Row, Screen, T } from '@/components/ui';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { errorMessage, notify } from '@/lib/alert';
-import { addFreeSlot, getMyCircles, sendPing } from '@/lib/api';
-import { formatTime } from '@/lib/time';
+import { addFreeSlot, addRules, getMyCircles, sendPing } from '@/lib/api';
+import { PRESETS, minuteOfDay, type TimeRange } from '@/lib/when';
 
 const VIBES = ['Dinner?', 'Drinks?', 'Coffee?', 'Walk?', 'Game night?', 'Anything!'];
 const EXPIRY = [1, 3, 6, 24];
 
-type Preset = { key: string; label: string; range: () => TimeRange | null };
-
-const at = (dayOffset: number, hour: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, 0, 0, 0);
-  return d.getTime();
-};
-
-const PRESETS: Preset[] = [
-  {
-    key: 'now',
-    label: 'Right now',
-    range: () => {
-      const start = Math.ceil(Date.now() / 900000) * 900000;
-      return { start, end: start + 2 * 3600000 };
-    },
-  },
-  {
-    key: 'tonight',
-    label: 'Tonight',
-    range: () => {
-      const end = at(0, 23);
-      const start = Math.max(at(0, 18), Math.ceil(Date.now() / 1800000) * 1800000);
-      return end - start >= 3600000 ? { start, end } : null;
-    },
-  },
-  { key: 'tomorrow', label: 'Tomorrow night', range: () => ({ start: at(1, 18), end: at(1, 22) }) },
-  {
-    key: 'weekend',
-    label: 'This weekend',
-    range: () => {
-      const toSat = (6 - new Date().getDay() + 7) % 7 || 7;
-      return { start: at(toSat, 12), end: at(toSat, 18) };
-    },
-  },
-];
-
 export default function NewPing() {
   const [message, setMessage] = useState('');
-  const [presetKey, setPresetKey] = useState<string>('tonight');
-  const [custom, setCustom] = useState<TimeRange | null>(null);
+  const [range, setRange] = useState<TimeRange>(() => (PRESETS[1].range() ?? PRESETS[0].range())!);
+  const [repeat, setRepeat] = useState(false);
   const [gif, setGif] = useState<GifChoice>({ gifUrl: null, sticker: null });
   const [audience, setAudience] = useState<Audience>({ visibility: 'friends', circleId: null });
   const [expiryHours, setExpiryHours] = useState(6);
@@ -68,12 +31,7 @@ export default function NewPing() {
   const [sent, setSent] = useState<number | null | undefined>(undefined);
   const { data: circles } = useData(getMyCircles);
 
-  const presets = PRESETS.filter((p) => p.range() !== null);
-  const range: TimeRange | null =
-    presetKey === 'custom' ? custom : (presets.find((p) => p.key === presetKey) ?? presets[0])?.range() ?? null;
-
   const send = async () => {
-    if (!range) return notify('Pick a time');
     setSending(true);
     try {
       // A ping disappears at the chosen expiry or when the free window ends, whichever is first.
@@ -93,6 +51,11 @@ export default function NewPing() {
       });
       // Being free is also availability, so overlaps pick it up.
       await addFreeSlot(startsAt, endsAt, message.trim()).catch(() => {});
+      if (repeat) {
+        await addRules([
+          { weekday: new Date(range.start).getDay(), start_minute: minuteOfDay(range.start), end_minute: minuteOfDay(range.end) || 1440 },
+        ]).catch(() => {});
+      }
       setSent(notified);
       setTimeout(() => router.back(), 1600);
     } catch (e) {
@@ -120,7 +83,7 @@ export default function NewPing() {
     audience.visibility === 'circle' ? (circles ?? []).find((c) => c.id === audience.circleId)?.name ?? 'A circle' : 'All friends';
 
   return (
-    <Screen edges={['bottom']}>
+    <Screen edges={['bottom']} center={false}>
       <View style={{ gap: Spacing.lg }}>
         <TextInput
           value={message}
@@ -140,25 +103,7 @@ export default function NewPing() {
 
       <View style={{ gap: Spacing.lg }}>
         <T variant="title">When?</T>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {presets.map((p) => (
-            <Chip key={p.key} label={p.label} selected={presetKey === p.key} onPress={() => setPresetKey(p.key)} />
-          ))}
-          <Chip
-            label="Pick a time"
-            selected={presetKey === 'custom'}
-            onPress={() => {
-              setPresetKey('custom');
-              if (!custom) setCustom(range ?? PRESETS[2].range());
-            }}
-          />
-        </View>
-        {presetKey === 'custom' && custom ? <TimeRangePicker value={custom} onChange={setCustom} /> : null}
-        {range ? (
-          <T variant="body" color={Colors.textSecondary}>
-            {new Date(range.start).toLocaleDateString(undefined, { weekday: 'long' })}, {formatTime(range.start)} – {formatTime(range.end)}
-          </T>
-        ) : null}
+        <WhenField value={range} onChange={setRange} repeat={repeat} onRepeatChange={setRepeat} />
       </View>
 
       <View style={{ gap: Spacing.lg }}>
@@ -168,7 +113,11 @@ export default function NewPing() {
             <Icon name={showCover ? 'close' : 'plus'} size={18} />
           </Row>
         </Pressable>
-        {showCover ? <GifPicker value={gif} onChange={setGif} /> : null}
+        {showCover ? (
+          <Animated.View entering={FadeInDown.duration(220)}>
+            <GifPicker value={gif} onChange={setGif} />
+          </Animated.View>
+        ) : null}
       </View>
 
       <View style={{ gap: Spacing.lg }}>
@@ -183,14 +132,14 @@ export default function NewPing() {
           </Row>
         </Pressable>
         {showOptions ? (
-          <View style={{ gap: Spacing.lg }}>
+          <Animated.View entering={FadeInDown.duration(220)} style={{ gap: Spacing.lg }}>
             <AudiencePicker value={audience} onChange={setAudience} circles={circles ?? []} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {EXPIRY.map((h) => (
                 <Chip key={h} label={`Gone in ${h}h`} selected={h === expiryHours} onPress={() => setExpiryHours(h)} />
               ))}
             </View>
-          </View>
+          </Animated.View>
         ) : null}
       </View>
 

@@ -21,7 +21,10 @@ export function MonthCalendar({
   selected,
   onSelect,
   marks,
+  minDay,
 }: {
+  /** Days before this are shown faded and can't be selected. */
+  minDay?: number;
   month: Date; // any date inside the month
   selected: number;
   onSelect: (day: number) => void;
@@ -54,8 +57,9 @@ export function MonthCalendar({
             const isSelected = day === selected;
             const isToday = day === today;
             const mark = marks[day];
+            const past = minDay !== undefined && day < minDay;
             return (
-              <Pressable key={day} onPress={() => onSelect(day)} style={styles.cell}>
+              <Pressable key={day} disabled={past} onPress={() => onSelect(day)} style={[styles.cell, past && { opacity: 0.3 }]}>
                 <View
                   style={[
                     styles.dayCircle,

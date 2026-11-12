@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Platform, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -28,7 +29,10 @@ export function Bouncy({
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
-      onPressIn={() => scale.set(withSpring(squish, { damping: 12, stiffness: 400 }))}
+      onPressIn={() => {
+        scale.set(withSpring(squish, { damping: 12, stiffness: 400 }));
+        if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+      }}
       onPressOut={() => scale.set(withSpring(1, { damping: 8, stiffness: 300 }))}
       style={[style, animated]}>
       {children}

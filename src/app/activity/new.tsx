@@ -1,43 +1,50 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AudiencePicker, type Audience } from '@/components/audience-picker';
 import { Icon } from '@/components/icon';
-import { TimeRangePicker, defaultRange } from '@/components/time-picker';
-import { Avatar, Button, Card, Chip, Input, List, ListRow, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Bouncy, PopButton } from '@/components/playful';
+import { Avatar, Chip, Input, Row, Screen, T, displayName } from '@/components/ui';
+import { WhenField } from '@/components/when-field';
+import { Colors, Fonts, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { errorMessage, notify } from '@/lib/alert';
 import { createActivity, getFriends, getMyCircles, sendPing } from '@/lib/api';
+import { PRESETS, type TimeRange } from '@/lib/when';
 
-const COVERS = ['🍸', '🍜', '☕️', '🎬', '🎳', '🏀', '🎮', '🎤', '🥾', '🏖️', '🎨', '🎉'];
-const IDEAS = ['Dinner', 'Drinks', 'Coffee', 'Movie night', 'Hike', 'Game night'];
+const IDEAS = [
+  { label: 'Dinner', emoji: '🍜' },
+  { label: 'Drinks', emoji: '🍸' },
+  { label: 'Coffee', emoji: '☕️' },
+  { label: 'Movie night', emoji: '🎬' },
+  { label: 'Hike', emoji: '🥾' },
+  { label: 'Game night', emoji: '🎮' },
+];
 
 export default function NewActivity() {
   const params = useLocalSearchParams<{ start?: string; end?: string; invite?: string; title?: string }>();
-  const initialRange = useMemo(() => {
+  const fromParams = useMemo<TimeRange | null>(() => {
     const s = Number(params.start);
     const e = Number(params.end);
-    if (s && e && e > s) {
-      // Snap to half hours so the picker chips line up.
-      const snap = (ms: number) => Math.round(ms / 1800000) * 1800000;
-      return { start: snap(s), end: Math.max(snap(e), snap(s) + 3600000) };
-    }
-    return defaultRange();
+    if (!s || !e || e <= s) return null;
+    const snap = (ms: number) => Math.round(ms / 1800000) * 1800000;
+    return { start: snap(s), end: Math.max(snap(e), snap(s) + 3600000) };
   }, [params.start, params.end]);
   const initialInvite = useMemo(() => (params.invite ? params.invite.split(',').filter(Boolean) : []), [params.invite]);
 
   const [title, setTitle] = useState(params.title ?? '');
-  const [emoji, setEmoji] = useState('🍸');
+  const [emoji, setEmoji] = useState('🎉');
   const [location, setLocation] = useState('');
   const [details, setDetails] = useState('');
-  const [range, setRange] = useState(initialRange);
+  const [range, setRange] = useState<TimeRange>(() => fromParams ?? (PRESETS[1].range() ?? PRESETS[2].range())!);
   const [audience, setAudience] = useState<Audience>(
     initialInvite.length ? { visibility: 'invite', circleId: null } : { visibility: 'friends', circleId: null },
   );
   const [invitees, setInvitees] = useState<string[]>(initialInvite);
-  const [alsoPing, setAlsoPing] = useState(true);
+  const [showWho, setShowWho] = useState(initialInvite.length > 0);
+  const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const { data } = useData(async () => {
@@ -63,8 +70,8 @@ export default function NewActivity() {
         },
         invitees,
       );
-      // Pings go to all friends or a circle; invite-only plans stay quiet.
-      if (alsoPing && audience.visibility !== 'invite') {
+      // Let friends know (invite-only plans stay quiet).
+      if (audience.visibility !== 'invite') {
         await sendPing({
           message: `${title.trim()}${location.trim() ? ` at ${location.trim()}` : ''}. Join?`,
           gif_url: null,
@@ -87,109 +94,148 @@ export default function NewActivity() {
     }
   };
 
+  const whoLabel =
+    audience.visibility === 'invite'
+      ? invitees.length
+        ? `${invitees.length} invited`
+        : 'Pick who to invite'
+      : audience.visibility === 'circle'
+        ? (data?.circles ?? []).find((c) => c.id === audience.circleId)?.name ?? 'A circle'
+        : 'All friends';
+
   return (
-    <Screen edges={['bottom']}>
-      <View style={{ gap: Spacing.md }}>
-        <Input
+    <Screen edges={['bottom']} center={false}>
+      <View style={{ gap: Spacing.lg }}>
+        <TextInput
           value={title}
           onChangeText={setTitle}
-          placeholder="Name your hangout"
+          placeholder="What's the plan?"
+          placeholderTextColor={Colors.textTertiary}
           maxLength={80}
-          style={{ fontSize: 24, fontWeight: '700', paddingVertical: 18 }}
+          multiline
+          style={{ fontFamily: Fonts.display, fontSize: 40, lineHeight: 46, color: Colors.text, paddingVertical: 4 }}
         />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {IDEAS.map((i) => (
-            <Chip key={i} label={i} selected={title === i} onPress={() => setTitle(i)} />
+            <Chip
+              key={i.label}
+              label={`${i.emoji}  ${i.label}`}
+              selected={title === i.label}
+              onPress={() => {
+                setTitle(i.label);
+                setEmoji(i.emoji);
+              }}
+            />
           ))}
         </View>
       </View>
-
-      <Section title="Cover">
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {COVERS.map((e) => (
-            <Pressable
-              key={e}
-              onPress={() => setEmoji(e)}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: Radius.md,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: e === emoji ? Colors.surfacePressed : Colors.surface,
-                borderWidth: 1.5,
-                borderColor: e === emoji ? Colors.accent : 'transparent',
-              }}>
-              <Text style={{ fontSize: 22 }}>{e}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </Section>
-
-      <Card>
-        <TimeRangePicker value={range} onChange={setRange} />
-      </Card>
 
       <View style={{ gap: Spacing.lg }}>
-        <Input label="Location" value={location} onChangeText={setLocation} placeholder="Add a place or address" />
-        <Input label="Details" value={details} onChangeText={setDetails} placeholder="Anything people should know" multiline />
+        <T variant="title">When?</T>
+        <WhenField value={range} onChange={setRange} initialCustom={!!fromParams} />
       </View>
 
-      <Section title="Who can see it">
-        <AudiencePicker value={audience} onChange={setAudience} circles={data?.circles ?? []} allowInvite />
-        {audience.visibility === 'invite' ? (
-          <List>
-            {(data?.friends ?? []).map((f) => {
-              const on = invitees.includes(f.id);
-              return (
-                <ListRow
-                  key={f.id}
-                  title={displayName(f)}
-                  left={<Avatar profile={f} size={32} />}
-                  chevron={false}
-                  onPress={() => setInvitees((list) => (on ? list.filter((x) => x !== f.id) : [...list, f.id]))}
-                  right={
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: on ? Colors.accent : 'transparent',
-                        borderWidth: on ? 0 : 1.5,
-                        borderColor: Colors.textTertiary,
-                      }}>
-                      {on ? <Icon name="check" size={14} color={Colors.onAccent} /> : null}
-                    </View>
-                  }
-                />
-              );
-            })}
-          </List>
-        ) : (
-          <Pressable onPress={() => setAlsoPing((v) => !v)}>
-            <Row>
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 6,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: alsoPing ? Colors.accent : 'transparent',
-                  borderWidth: alsoPing ? 0 : 1.5,
-                  borderColor: Colors.textTertiary,
-                }}>
-                {alsoPing ? <Icon name="check" size={13} color={Colors.onAccent} /> : null}
-              </View>
-              <T variant="label">Notify them with a ping</T>
-            </Row>
-          </Pressable>
-        )}
-      </Section>
+      <View style={{ gap: Spacing.lg }}>
+        <T variant="title">Where?</T>
+        <Input value={location} onChangeText={setLocation} placeholder="A place or address (optional)" />
+      </View>
 
-      <Button title="Create hangout" size="lg" variant="white" onPress={save} loading={saving} />
+      <View style={{ gap: Spacing.lg }}>
+        <Pressable onPress={() => setShowWho((v) => !v)} hitSlop={8}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T variant="title">Who?</T>
+            <T variant="label" style={{ textDecorationLine: 'underline' }}>
+              {showWho ? 'Done' : whoLabel}
+            </T>
+          </Row>
+        </Pressable>
+        {showWho ? (
+          <Animated.View entering={FadeInDown.duration(220)} style={{ gap: Spacing.lg }}>
+            <AudiencePicker value={audience} onChange={setAudience} circles={data?.circles ?? []} allowInvite />
+            {audience.visibility === 'invite' ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.lg }}>
+                {(data?.friends ?? []).map((f) => {
+                  const on = invitees.includes(f.id);
+                  return (
+                    <Bouncy
+                      key={f.id}
+                      onPress={() => setInvitees((list) => (on ? list.filter((x) => x !== f.id) : [...list, f.id]))}
+                      style={{ alignItems: 'center', gap: 6, width: 72 }}>
+                      <View>
+                        <Avatar profile={f} size={60} ring={on ? Colors.text : undefined} />
+                        {on ? (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              right: -2,
+                              bottom: -2,
+                              width: 24,
+                              height: 24,
+                              borderRadius: 12,
+                              backgroundColor: Colors.accent,
+                              borderWidth: 2,
+                              borderColor: Colors.background,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}>
+                            <Icon name="check" size={12} color={Colors.onAccent} />
+                          </View>
+                        ) : null}
+                      </View>
+                      <T variant="caption" color={Colors.text} numberOfLines={1}>
+                        {displayName(f).split(' ')[0]}
+                      </T>
+                    </Bouncy>
+                  );
+                })}
+              </View>
+            ) : null}
+          </Animated.View>
+        ) : null}
+      </View>
+
+      <View style={{ gap: Spacing.lg }}>
+        <Pressable onPress={() => setShowMore((v) => !v)} hitSlop={8}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T variant="body" color={Colors.textSecondary}>
+              Add details or change the cover
+            </T>
+            <Icon name={showMore ? 'close' : 'plus'} size={18} />
+          </Row>
+        </Pressable>
+        {showMore ? (
+          <Animated.View entering={FadeInDown.duration(220)} style={{ gap: Spacing.lg }}>
+            <Input value={details} onChangeText={setDetails} placeholder="Anything people should know" multiline />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {['🎉', '🍜', '🍸', '☕️', '🎬', '🎳', '🥾', '🎮', '🎤', '🏖️'].map((e) => (
+                <Bouncy
+                  key={e}
+                  onPress={() => setEmoji(e)}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: e === emoji ? Colors.accent : Colors.surface,
+                    borderWidth: e === emoji ? 1.5 : 0,
+                    borderColor: Colors.text,
+                  }}>
+                  <Text style={{ fontSize: 24 }}>{e}</Text>
+                </Bouncy>
+              ))}
+            </View>
+          </Animated.View>
+        ) : null}
+      </View>
+
+      <PopButton onPress={save} disabled={saving}>
+        <Row style={{ padding: 20, justifyContent: 'center' }}>
+          <T variant="title" color={Colors.onAccent}>
+            {saving ? 'Creating…' : 'Create hangout'}
+          </T>
+        </Row>
+      </PopButton>
     </Screen>
   );
 }
