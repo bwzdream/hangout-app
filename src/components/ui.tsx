@@ -70,8 +70,11 @@ export function Screen({
   onRefresh,
   edges = ['top'],
   contentStyle,
+  center = true,
 }: {
   children: ReactNode;
+  /** Vertically center content that's shorter than the screen (default). */
+  center?: boolean;
   scroll?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
@@ -83,7 +86,7 @@ export function Screen({
     <SafeAreaView edges={edges} style={styles.screen}>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 64 }}
+          contentContainerStyle={[{ flexGrow: 1, paddingTop: 40, paddingBottom: 72 }, center && { justifyContent: 'center' }]}
           keyboardShouldPersistTaps="handled"
           indicatorStyle={isLight ? 'black' : 'white'}
           refreshControl={
@@ -92,7 +95,7 @@ export function Screen({
           {inner}
         </ScrollView>
       ) : (
-        inner
+        <View style={[{ flex: 1, paddingTop: 40, paddingBottom: 40 }, center && { justifyContent: 'center' }]}>{inner}</View>
       )}
     </SafeAreaView>
   );
