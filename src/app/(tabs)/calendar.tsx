@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { DayTimeline, MonthCalendar, localDayStart, type DayMark, type TimelinePerson } from '@/components/calendar-views';
+import { DayTimeline, MonthCalendar, WeekStrip, localDayStart, type DayMark, type TimelinePerson } from '@/components/calendar-views';
+import { Icon } from '@/components/icon';
 import { ActivityCard } from '@/components/cards';
-import { Button, Card, Header, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
+import { Button, Card, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { getAvailability, getFriends, getProfiles, listActivitiesBetween } from '@/lib/api';
@@ -24,6 +26,7 @@ export default function CalendarTab() {
   const [now] = useState(() => Date.now());
   const [month, setMonth] = useState(() => new Date(now));
   const [selected, setSelected] = useState(() => localDayStart(now));
+  const [expanded, setExpanded] = useState(false);
 
   const { data, loading, refreshing, refresh, reload } = useData(async () => {
     if (!meId) return null;
@@ -92,31 +95,48 @@ export default function CalendarTab() {
 
   const selectedLabel = new Date(selected).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
-  return (
-    <Screen refreshing={refreshing} onRefresh={refresh}>
-      <Header
-        overline={String(month.getFullYear())}
-        title={month.toLocaleDateString(undefined, { month: 'long' })}
-        right={
-          <Row>
-            <IconButton icon="chevronLeft" label="Previous month" onPress={() => shiftMonth(-1)} />
-            <IconButton icon="chevron" label="Next month" onPress={() => shiftMonth(1)} />
-          </Row>
-        }
-      />
+  const selectDay = (d: number) => {
+    setSelected(d);
+    const m = new Date(d);
+    if (m.getMonth() !== month.getMonth() || m.getFullYear() !== month.getFullYear()) setMonth(new Date(m.getFullYear(), m.getMonth(), 1));
+  };
+  const shift = (delta: number) => {
+    if (expanded) return shiftMonth(delta);
+    const d = new Date(selected);
+    d.setDate(d.getDate() + delta * 7);
+    selectDay(localDayStart(d.getTime()));
+  };
 
-      <View style={{ gap: Spacing.md }}>
-        <MonthCalendar month={month} selected={selected} onSelect={setSelected} marks={marks} />
-        <Row gap={Spacing.lg} style={{ justifyContent: 'center' }}>
-          <Row gap={6}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent }} />
-            <T variant="caption">Free with friends</T>
-          </Row>
-          <Row gap={6}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.pink }} />
-            <T variant="caption">Hangout</T>
+  return (
+    <Screen refreshing={refreshing} onRefresh={refresh} center={false}>
+      <View style={{ gap: Spacing.lg }}>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={8} accessibilityLabel="Show full month">
+            <Row gap={8}>
+              <T variant="largeTitle">{month.toLocaleDateString(undefined, { month: 'long' })}</T>
+              <Icon name={expanded ? 'close' : 'calendar'} size={18} color={Colors.textSecondary} />
+            </Row>
+          </Pressable>
+          <Row>
+            <IconButton icon="chevronLeft" label={expanded ? 'Previous month' : 'Previous week'} onPress={() => shift(-1)} />
+            <IconButton icon="chevron" label={expanded ? 'Next month' : 'Next week'} onPress={() => shift(1)} />
           </Row>
         </Row>
+        {expanded ? (
+          <Animated.View entering={FadeInDown.duration(220)}>
+            <MonthCalendar
+              month={month}
+              selected={selected}
+              marks={marks}
+              onSelect={(d) => {
+                selectDay(d);
+                setExpanded(false);
+              }}
+            />
+          </Animated.View>
+        ) : (
+          <WeekStrip selected={selected} onSelect={selectDay} marks={marks} />
+        )}
       </View>
 
       <Section
@@ -144,6 +164,13 @@ export default function CalendarTab() {
             people={people}
             events={events}
             now={now}
+            startHour={8}
+            hourHeight={32}
+            onPressFree={(p, w) =>
+              p.profile?.id === meId
+                ? router.push('/availability')
+                : router.push({ pathname: '/activity/new', params: { start: String(w.start), end: String(Math.min(w.end, w.start + 3 * 3600000)), invite: p.profile!.id } })
+            }
             onPressEvent={(id) => router.push({ pathname: '/activity/[id]', params: { id } })}
           />
           {mine.length === 0 ? (
