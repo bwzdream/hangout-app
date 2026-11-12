@@ -3,34 +3,25 @@
  * shadow, and little rotated stickers.
  */
 import { useEffect, type ReactNode } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Colors } from '@/constants/theme';
 
 import { Icon, type IconName } from './icon';
 import { T } from './ui';
 
-export { Bouncy } from './bouncy';
+import { Bouncy } from './bouncy';
 
-/**
- * Chunky button with a black outline and a hard offset shadow that "presses in".
- * Used for the few big moments (I'm free, Send).
- */
+export { Bouncy };
+
+/** Big, soft, rounded button for the main moments (Send, Create). Squishes on press. */
 export function PopButton({
   children,
   onPress,
   color = Colors.accent,
   style,
-  radius = 28,
+  radius = 32,
   disabled,
 }: {
   children: ReactNode;
@@ -40,26 +31,26 @@ export function PopButton({
   radius?: number;
   disabled?: boolean;
 }) {
-  const press = useSharedValue(0);
-  const face = useAnimatedStyle(() => ({
-    transform: [{ translateX: press.get() * 4 }, { translateY: press.get() * 5 }],
-  }));
   return (
-    <Pressable
-      disabled={disabled}
+    <Bouncy
       onPress={onPress}
-      onPressIn={() => press.set(withTiming(1, { duration: 70 }))}
-      onPressOut={() => press.set(withSpring(0, { damping: 9, stiffness: 260 }))}
-      style={[{ paddingRight: 4, paddingBottom: 5, opacity: disabled ? 0.5 : 1 }, style]}>
-      {/* the hard shadow */}
-      <View
-        style={{ position: 'absolute', left: 4, top: 5, right: 0, bottom: 0, borderRadius: radius, backgroundColor: Colors.text }}
-      />
-      <Animated.View
-        style={[{ borderRadius: radius, backgroundColor: color, borderWidth: 2, borderColor: Colors.text, overflow: 'hidden' }, face]}>
-        {children}
-      </Animated.View>
-    </Pressable>
+      disabled={disabled}
+      squish={0.96}
+      style={[
+        {
+          borderRadius: radius,
+          backgroundColor: color,
+          opacity: disabled ? 0.5 : 1,
+          shadowColor: '#1E7A45',
+          shadowOpacity: 0.22,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 6,
+        },
+        style,
+      ]}>
+      {children}
+    </Bouncy>
   );
 }
 

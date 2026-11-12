@@ -232,7 +232,7 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   size?: 'sm' | 'md' | 'lg';
 }) {
-  const bg = { primary: Colors.cta, white: Colors.cta, secondary: 'transparent', ghost: 'transparent', danger: 'transparent' }[variant];
+  const bg = { primary: Colors.cta, white: Colors.cta, secondary: Colors.surfaceRaised, ghost: 'transparent', danger: 'transparent' }[variant];
   const fg = { primary: Colors.onCta, white: Colors.onCta, secondary: Colors.text, ghost: Colors.text, danger: Colors.danger }[variant];
   const height = { sm: 40, md: 52, lg: 60 }[size];
   return (
@@ -242,7 +242,6 @@ export function Button({
       style={[
         styles.button,
         { backgroundColor: bg, height, paddingHorizontal: size === 'sm' ? 16 : 24, opacity: disabled ? 0.4 : 1 },
-        variant === 'secondary' && { borderWidth: 1.5, borderColor: Colors.text },
         style,
       ]}>
       {loading ? (
@@ -283,10 +282,10 @@ export function Chip({
       onPress={onPress}
       style={[
         styles.chip,
-        selected ? { backgroundColor: Colors.accent, borderColor: Colors.text } : { backgroundColor: 'transparent', borderColor: Colors.outline },
+        { backgroundColor: selected ? Colors.accent : Colors.surfaceRaised },
         style,
       ]}>
-      <T variant="label" color={selected ? Colors.onAccent : Colors.text} style={{ fontSize: 15, fontWeight: '600' }}>
+      <T variant="label" color={selected ? Colors.onAccent : Colors.text} style={{ fontSize: 15, fontWeight: selected ? '700' : '500' }}>
         {label}
       </T>
     </Bouncy>
@@ -439,12 +438,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.outline,
+    backgroundColor: Colors.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chip: { borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 11, borderWidth: 1.5 },
+  chip: { borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 11 },
   input: {
     backgroundColor: 'transparent',
     borderBottomWidth: 1,

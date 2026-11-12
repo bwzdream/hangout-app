@@ -2,6 +2,7 @@ import { router, Tabs } from 'expo-router';
 import { View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
+import { HandLogo } from '@/components/logo';
 import { Bouncy } from '@/components/playful';
 import { T } from '@/components/ui';
 import { Colors } from '@/constants/theme';
@@ -25,17 +26,15 @@ function FreeButton() {
             height: 64,
             borderRadius: 32,
             backgroundColor: Colors.accent,
-            borderWidth: 2,
-            borderColor: Colors.text,
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOpacity: 0.18,
+            shadowColor: '#1E7A45',
+            shadowOpacity: 0.3,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 4 },
             elevation: 6,
           }}>
-          <Icon name="bolt" size={26} color={Colors.onAccent} />
+          <HandLogo size={42} wave />
         </View>
         <T variant="caption" color={Colors.text} style={{ fontSize: 11, fontWeight: '700', marginTop: 4 }}>
           I&apos;m free

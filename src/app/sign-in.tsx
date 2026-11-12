@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 
+import { HandLogo } from '@/components/logo';
 import { Button, Input, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { errorMessage, notify } from '@/lib/alert';
@@ -45,6 +46,9 @@ export default function SignIn() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: Colors.background }}>
       <Screen edges={['top', 'bottom']} contentStyle={{ paddingTop: 72, gap: 40 }}>
         <View style={{ gap: Spacing.lg }}>
+          <View style={{ width: 88, height: 88, borderRadius: 28, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+            <HandLogo size={64} wave />
+          </View>
           <T variant="display">
             pingle<T variant="display" color={Colors.accent}>.</T>
           </T>

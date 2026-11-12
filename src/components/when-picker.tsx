@@ -42,8 +42,7 @@ const stepBtn = {
   width: 40,
   height: 40,
   borderRadius: 20,
-  borderWidth: 1.5,
-  borderColor: Colors.text,
+  backgroundColor: Colors.surfaceRaised,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
@@ -132,6 +131,7 @@ export function WhenPicker({
               onValueChange={onRepeatChange}
               trackColor={{ false: Colors.surfaceRaised, true: Colors.accent }}
               thumbColor={Colors.white}
+              {...({ activeThumbColor: Colors.white } as object)}
               ios_backgroundColor={Colors.surfaceRaised}
             />
           </Row>

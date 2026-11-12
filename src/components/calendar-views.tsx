@@ -280,7 +280,7 @@ export function WeekStrip({
             <T variant="caption" color={isSel ? Colors.text : Colors.textTertiary} style={{ fontSize: 11, fontWeight: '700' }}>
               {d.toLocaleDateString(undefined, { weekday: 'narrow' })}
             </T>
-            <View style={[styles.dayCircle, isSel && { backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.text }]}>
+            <View style={[styles.dayCircle, isSel && { backgroundColor: Colors.accent }]}>
               <T variant="label" color={isSel ? Colors.onAccent : isToday ? Colors.accentInk : Colors.text} style={{ fontSize: 17, fontWeight: isSel || isToday ? '800' : '500' }}>
                 {d.getDate()}
               </T>

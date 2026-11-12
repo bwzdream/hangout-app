@@ -6,7 +6,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AudiencePicker, type Audience } from '@/components/audience-picker';
 import { GifPicker, type GifChoice } from '@/components/gif-picker';
 import { Icon } from '@/components/icon';
-import { PopButton, Sticker } from '@/components/playful';
+import { HandLogo } from '@/components/logo';
+import { PopButton } from '@/components/playful';
 import { WhenField } from '@/components/when-field';
 import { Chip, Row, Screen, T } from '@/components/ui';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
@@ -68,7 +69,9 @@ export default function NewPing() {
   if (sent !== undefined) {
     return (
       <Screen edges={['bottom']} scroll={false} contentStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.xl }}>
-        <Sticker icon="check" size={96} color={Colors.accent} iconColor={Colors.onAccent} />
+        <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <HandLogo size={84} wave />
+        </View>
         <T variant="display" style={{ textAlign: 'center' }}>
           Sent!
         </T>
@@ -145,7 +148,7 @@ export default function NewPing() {
 
       <PopButton onPress={send} disabled={sending}>
         <Row style={{ padding: 20, justifyContent: 'center' }} gap={10}>
-          <Icon name="bolt" size={22} color={Colors.onAccent} />
+          <HandLogo size={34} waves={false} />
           <T variant="title" color={Colors.onAccent}>
             {sending ? 'Sending…' : 'Send ping'}
           </T>

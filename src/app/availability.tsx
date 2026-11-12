@@ -110,9 +110,7 @@ export default function Availability() {
                   borderRadius: 20,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: on ? Colors.accent : 'transparent',
-                  borderWidth: 1.5,
-                  borderColor: on ? Colors.text : Colors.outline,
+                  backgroundColor: on ? Colors.accent : Colors.surfaceRaised,
                 }}>
                 <T variant="label" color={on ? Colors.onAccent : Colors.textTertiary} style={{ fontWeight: '700' }}>
                   {d[0]}

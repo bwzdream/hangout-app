@@ -218,8 +218,6 @@ export default function NewActivity() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: e === emoji ? Colors.accent : Colors.surface,
-                    borderWidth: e === emoji ? 1.5 : 0,
-                    borderColor: Colors.text,
                   }}>
                   <Text style={{ fontSize: 24 }}>{e}</Text>
                 </Bouncy>
