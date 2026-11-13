@@ -1,67 +1,54 @@
 /**
- * Pingle's mascot: a waving hand with a little face.
- * Vector (react-native-svg), so it stays crisp at any size.
+ * Pingle's logo: two hands meeting in a high five.
+ * Vector (react-native-svg), so it stays crisp at any size. The source icon is a thin
+ * outline; we trace it with a matching stroke to make the lines bolder.
  */
 import { useEffect } from 'react';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
 
 import { Colors } from '@/constants/theme';
+
+import { HIGH_FIVE_PATH } from './logo-path';
 
 export function HandLogo({
   size = 40,
   color = Colors.text,
-  face = Colors.accent,
-  waves = true,
+  weight = 2,
   wave = false,
 }: {
   size?: number;
-  /** Hand color. */
   color?: string;
-  /** Eyes & smile color (usually the background it sits on). */
-  face?: string;
-  /** Show the little motion lines. */
-  waves?: boolean;
-  /** Gently wave back and forth. */
+  /** Extra line thickness (in icon units). 0 = original thin lines. */
+  weight?: number;
+  /** Little "high five" bounce every few seconds. */
   wave?: boolean;
 }) {
-  const r = useSharedValue(0);
+  const t = useSharedValue(0);
   useEffect(() => {
     if (!wave) return;
-    r.set(
+    t.set(
       withRepeat(
         withSequence(
-          withDelay(1800, withTiming(-14, { duration: 160, easing: Easing.out(Easing.quad) })),
-          withTiming(12, { duration: 220 }),
-          withTiming(-10, { duration: 200 }),
-          withTiming(0, { duration: 180 }),
+          withDelay(2200, withTiming(1, { duration: 140, easing: Easing.out(Easing.quad) })),
+          withTiming(-0.6, { duration: 160 }),
+          withTiming(0, { duration: 220, easing: Easing.out(Easing.back(2)) }),
         ),
         -1,
       ),
     );
-  }, [r, wave]);
-  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${r.get()}deg` }] }));
+  }, [t, wave]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + t.get() * 0.12 }, { rotate: `${t.get() * -6}deg` }],
+  }));
 
   return (
     <Animated.View style={[{ width: size, height: size }, style]}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
-        <G transform="translate(-4 0) rotate(-16 52 56)">
-          <Rect x={30} y={20} width={11} height={36} rx={5.5} fill={color} />
-          <Rect x={42.5} y={13} width={11} height={42} rx={5.5} fill={color} />
-          <Rect x={55} y={17} width={11} height={38} rx={5.5} fill={color} />
-          <Rect x={67} y={26} width={10} height={30} rx={5} fill={color} />
-          <Rect x={28} y={40} width={50} height={40} rx={19} fill={color} />
-          <Rect x={13} y={45} width={26} height={12} rx={6} fill={color} transform="rotate(38 26 51)" />
-          <Circle cx={45} cy={59} r={3.2} fill={face} />
-          <Circle cx={60} cy={59} r={3.2} fill={face} />
-          <Path d="M45.5 66.5 Q52.5 72.5 59.5 66.5" stroke={face} strokeWidth={3.2} fill="none" strokeLinecap="round" />
+        {/* Center the drawing (bounds x 16–84, y 5–94) in the square */}
+        <G transform="translate(0 0.5)">
+          <Path d={HIGH_FIVE_PATH} fill={color} stroke={color} strokeWidth={weight} strokeLinejoin="round" />
         </G>
-        {waves ? (
-          <>
-            <Path d="M78 18 Q86 24 86 34" stroke={color} strokeWidth={4.5} fill="none" strokeLinecap="round" />
-            <Path d="M84 8 Q96 17 95 33" stroke={color} strokeWidth={4.5} fill="none" strokeLinecap="round" />
-          </>
-        ) : null}
       </Svg>
     </Animated.View>
   );

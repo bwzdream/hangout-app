@@ -148,7 +148,7 @@ export default function NewPing() {
 
       <PopButton onPress={send} disabled={sending}>
         <Row style={{ padding: 20, justifyContent: 'center' }} gap={10}>
-          <HandLogo size={34} waves={false} />
+          <HandLogo size={34} />
           <T variant="title" color={Colors.onAccent}>
             {sending ? 'Sending…' : 'Send ping'}
           </T>

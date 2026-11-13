@@ -104,3 +104,8 @@ npm run lint
 - Sign in with Apple / Google
 - Rich GIF previews inside iOS notifications (notification service extension)
 - v2: nearby activity ideas, interests in profile, shared photo albums, comments, SMS invites, split-the-bill
+
+## Credits
+
+- Logo: "High five" by Rudy Pratama Agnel from [Noun Project](https://thenounproject.com) (CC BY 3.0), with thickened lines.
+- Headline font: [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif) (SIL Open Font License).
