@@ -143,7 +143,7 @@ export default function CalendarTab() {
         title={selectedLabel}
         action={
           <Button
-            title="Plan"
+            title="Plan this day"
             icon="plus"
             size="sm"
             variant="white"
@@ -159,6 +159,11 @@ export default function CalendarTab() {
           <ActivityCard key={a.id} activity={a} profiles={data?.profiles ?? {}} meId={meId} height={200} />
         ))}
         <Card>
+          <T variant="body" color={Colors.textSecondary}>
+            {people.some((p, i) => i > 0 && p.windows.length > 0)
+              ? 'Green means free. Tap a friend’s green box to ask them to hang out.'
+              : 'None of your friends have shared free time for this day yet.'}
+          </T>
           <DayTimeline
             day={selected}
             people={people}
@@ -174,7 +179,7 @@ export default function CalendarTab() {
             onPressEvent={(id) => router.push({ pathname: '/activity/[id]', params: { id } })}
           />
           {mine.length === 0 ? (
-            <Button title="Add free time" size="sm" variant="secondary" onPress={() => router.push('/availability')} style={{ alignSelf: 'flex-start' }} />
+            <Button title="Add my free time" size="sm" variant="secondary" onPress={() => router.push('/availability')} style={{ alignSelf: 'flex-start' }} />
           ) : null}
         </Card>
       </Section>

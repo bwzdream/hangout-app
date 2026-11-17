@@ -58,7 +58,7 @@ export default function TabLayout() {
       <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: tabIcon('calendar') }} />
       <Tabs.Screen name="new" options={{ title: "I'm free", tabBarButton: () => <FreeButton /> }} />
       <Tabs.Screen name="friends" options={{ title: 'Friends', tabBarIcon: tabIcon('friends') }} />
-      <Tabs.Screen name="me" options={{ title: 'You', tabBarIcon: tabIcon('person') }} />
+      <Tabs.Screen name="me" options={{ title: 'Me', tabBarIcon: tabIcon('person') }} />
     </Tabs>
   );
 }

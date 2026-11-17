@@ -42,7 +42,7 @@ export function AudiencePicker({
           />
         ) : null}
       </View>
-      {circles.length === 0 ? <T variant="caption">Create circles from the Friends tab to share with smaller groups.</T> : null}
+      {circles.length === 0 ? <T variant="caption">Tip: make groups (like “Close friends”) on the Friends page.</T> : null}
     </View>
   );
 }

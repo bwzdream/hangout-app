@@ -1,64 +1,89 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { DayTimeline, type TimelinePerson } from '@/components/calendar-views';
 import { ActivityCard } from '@/components/cards';
-import { Button, Chip, Empty, IconButton, Loading, Row, Screen, Section, T, displayName } from '@/components/ui';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Avatar, Button, Chip, Loading, Row, Screen, T, displayName } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
-import { errorMessage, notify } from '@/lib/alert';
-import {
-  getAvailability,
-  getFriends,
-  getProfiles,
-  listActivePings,
-  listUpcomingActivities,
-  nudgeFriend,
-} from '@/lib/api';
-import { freeWindows, intersect } from '@/lib/availability';
+import { getAvailability, getFriends, getMyRules, getProfiles, listActivePings, listUpcomingActivities } from '@/lib/api';
+import { clip, freeWindows, intersect, merge, type Interval } from '@/lib/availability';
 import { supabase } from '@/lib/supabase';
-import { DAY_MS, formatRange, formatTime } from '@/lib/time';
+import { DAY_MS, formatTime } from '@/lib/time';
+import type { Profile } from '@/lib/types';
 import { dayStart } from '@/lib/when';
+import { WELCOME_KEY } from '@/lib/onboarding';
 import { useAuth } from '@/providers/auth';
 
-function joinNames(names: string[]) {
-  if (names.length <= 1) return names[0] ?? '';
-  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+const span = (w: Interval) => `${formatTime(w.start)} – ${formatTime(w.end)}`;
+
+type FriendToday = { profile: Profile; windows: Interval[]; together: Interval[]; note: string | null };
+
+/** One friend: who, when, and one obvious button. */
+function FriendRow({ f, onAsk }: { f: FriendToday; onAsk: () => void }) {
+  return (
+    <View style={{ gap: Spacing.md, paddingVertical: Spacing.lg, borderTopWidth: 1, borderTopColor: Colors.hairline }}>
+      <Row gap={Spacing.lg}>
+        <Avatar profile={f.profile} size={56} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <T variant="heading" style={{ fontSize: 20 }}>
+            {displayName(f.profile)}
+          </T>
+          <T variant="body">Free {f.windows.map(span).join(', ')}</T>
+          {f.note ? (
+            <T variant="body" color={Colors.textSecondary}>
+              “{f.note}”
+            </T>
+          ) : null}
+        </View>
+      </Row>
+      <Row gap={Spacing.md} style={{ flexWrap: 'wrap' }}>
+        <Button title="Ask to hang out" size="sm" onPress={onAsk} />
+        {f.together.length ? (
+          <View style={{ backgroundColor: Colors.accentDim, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <T variant="caption" color={Colors.accentInk} style={{ fontWeight: '700' }}>
+              You&apos;re free then too
+            </T>
+          </View>
+        ) : null}
+      </Row>
+    </View>
+  );
 }
 
 export default function Home() {
   const { session, profile } = useAuth();
   const meId = session?.user.id;
-  const { width } = useWindowDimensions();
   const [now] = useState(() => Date.now());
   const [which, setWhich] = useState<'today' | 'tomorrow'>('today');
-  const [nudged, setNudged] = useState(false);
-  const sentToFriends = useRef(false);
+  const checkedWelcome = useRef(false);
 
   const { data, loading, refreshing, refresh, reload } = useData(async () => {
     if (!meId) return null;
     const range = { start: dayStart(Date.now()), end: dayStart(Date.now()) + 2 * DAY_MS };
-    const [friends, pings, activities] = await Promise.all([getFriends(), listActivePings(), listUpcomingActivities()]);
+    const [friends, pings, activities, rules] = await Promise.all([getFriends(), listActivePings(), listUpcomingActivities(), getMyRules()]);
     const availability = await getAvailability([meId, ...friends.friends.map((f) => f.id)], range);
     const memberIds = activities.flatMap((a) => [a.host_id, ...a.members.map((m) => m.user_id)]);
-    const profiles = {
-      ...(await getProfiles([...memberIds, ...pings.map((p) => p.sender_id)])),
-      ...Object.fromEntries(friends.friends.map((f) => [f.id, f])),
-    };
+    const profiles = { ...(await getProfiles(memberIds)), ...Object.fromEntries(friends.friends.map((f) => [f.id, f])) };
     if (profile) profiles[profile.id] = profile;
-    return { friends: friends.friends, pings, activities, availability, profiles };
+    return { friends: friends.friends, pings, activities, availability, profiles, hasRoutine: rules.length > 0 };
   });
 
-  // No friends yet? Take them to the Friends page (once per visit).
+  // First time here and nothing set up yet? Show the short welcome.
   useEffect(() => {
-    if (data && data.friends.length === 0 && !sentToFriends.current) {
-      sentToFriends.current = true;
-      router.navigate('/friends');
-    }
+    if (!data || checkedWelcome.current) return;
+    checkedWelcome.current = true;
+    if (data.hasRoutine || data.friends.length > 0) return;
+    AsyncStorage.getItem(WELCOME_KEY)
+      .then((seen) => {
+        if (!seen) router.push('/welcome');
+      })
+      .catch(() => {});
   }, [data]);
 
-  // Live: refresh when a new ping or RSVP lands.
+  // Live: refresh when a friend says they're free or someone RSVPs.
   useEffect(() => {
     if (!meId) return;
     const channel = supabase
@@ -73,139 +98,106 @@ export default function Home() {
 
   if (loading && !data) return <Loading />;
 
-  // ── Who's free on the selected day ──
   const day = dayStart(now) + (which === 'tomorrow' ? DAY_MS : 0);
-  const visibleFrom = which === 'today' ? Math.max(day, now - 30 * 60000) : day;
-  const range = { start: visibleFrom, end: day + DAY_MS };
-  const startHour = which === 'today' ? Math.max(7, Math.min(new Date(now).getHours(), 20)) : 8;
-
-  const pingsFor = (userId: string) =>
-    (data?.pings ?? [])
-      .filter((p) => p.sender_id === userId && new Date(p.ends_at).getTime() > range.start && new Date(p.starts_at).getTime() < range.end)
-      .map((p) => ({ id: p.id, start: new Date(p.starts_at).getTime(), end: new Date(p.ends_at).getTime(), message: p.message }));
+  const range = { start: which === 'today' ? Math.max(day, now) : day, end: day + DAY_MS };
+  const dayWord = which === 'today' ? 'today' : 'tomorrow';
 
   const mine = data && meId && data.availability[meId] ? freeWindows(data.availability[meId], range) : [];
-  const friendRows: TimelinePerson[] = (data?.friends ?? [])
+  const friendsFree: FriendToday[] = (data?.friends ?? [])
     .map((f) => {
-      const windows = data?.availability[f.id] ? freeWindows(data.availability[f.id], range) : [];
-      return { profile: f, label: displayName(f).split(' ')[0], windows, overlap: intersect(mine, windows), pings: pingsFor(f.id) };
+      const ping = (data?.pings ?? []).find((p) => p.sender_id === f.id && new Date(p.starts_at).getTime() < range.end && new Date(p.ends_at).getTime() > range.start);
+      // Their usual/one-off free time, plus the time they just posted.
+      const posted = ping ? clip([{ start: new Date(ping.starts_at).getTime(), end: new Date(ping.ends_at).getTime() }], range) : [];
+      const windows = merge([...(data?.availability[f.id] ? freeWindows(data.availability[f.id], range) : []), ...posted]);
+      return { profile: f, windows, together: intersect(mine, windows), note: ping?.message || null };
     })
-    .filter((r) => r.windows.length > 0 || (r.pings?.length ?? 0) > 0)
-    .sort((a, b) => (b.pings?.length ?? 0) - (a.pings?.length ?? 0) || b.overlap.length - a.overlap.length);
-  const busyFriends = (data?.friends.length ?? 0) - friendRows.length;
-  const people: TimelinePerson[] = [{ profile, label: 'You', windows: mine, overlap: [], pings: meId ? pingsFor(meId) : [] }, ...friendRows];
+    .filter((f) => f.windows.length > 0)
+    .sort((a, b) => b.together.length - a.together.length || a.windows[0].start - b.windows[0].start);
 
-  // The best overlap on that day, for the one-line suggestion.
-  const best = friendRows
-    .flatMap((r) => r.overlap.filter((o) => o.end - o.start >= 3600000).map((o) => ({ ...o, profile: r.profile! })))
-    .sort((a, b) => a.start - b.start)[0];
-  const bestWith = best ? friendRows.filter((r) => r.overlap.some((o) => o.start < best.end && o.end > best.start)).map((r) => r.profile!) : [];
-
-  const firstName = (profile?.display_name || profile?.username || 'there').split(' ')[0];
-  const cardWidth = Math.min(width, MaxContentWidth) - 40 - 36;
-
-  const nudge = async () => {
-    if (!best) return;
-    try {
-      await Promise.all(bestWith.map((p) => nudgeFriend(p.id, formatRange(best.start, best.end))));
-      setNudged(true);
-    } catch (e) {
-      notify("Couldn't send nudge", errorMessage(e));
-    }
-  };
-
-  const planWith = (ids: string[], start: number, end: number) =>
+  const ask = (f: FriendToday) => {
+    const w = f.together[0] ?? f.windows[0];
     router.push({
       pathname: '/activity/new',
-      params: { start: String(start), end: String(Math.min(end, start + 3 * 3600000)), invite: ids.join(',') },
+      params: { start: String(w.start), end: String(Math.min(w.end, w.start + 3 * 3600000)), invite: f.profile.id, title: f.note ?? '' },
     });
+  };
+
+  const firstName = (profile?.display_name || profile?.username || '').split(' ')[0];
+  const hasFriends = (data?.friends.length ?? 0) > 0;
+  const nextPlan = data?.activities[0];
 
   return (
     <Screen refreshing={refreshing} onRefresh={refresh} center={false}>
-      <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <View style={{ gap: 2 }}>
-          <T variant="caption">{new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</T>
-          <T variant="largeTitle">Hey, {firstName}</T>
-        </View>
-        <IconButton icon="plus" label="New hangout" onPress={() => router.push('/activity/new')} />
-      </Row>
-
-      <View style={{ gap: Spacing.lg }}>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <T variant="title">Who&apos;s free</T>
-          <Row gap={8}>
-            <Chip label="Today" selected={which === 'today'} onPress={() => setWhich('today')} />
-            <Chip label="Tomorrow" selected={which === 'tomorrow'} onPress={() => setWhich('tomorrow')} />
-          </Row>
-        </Row>
-
-        <DayTimeline
-          day={day}
-          people={people}
-          now={now}
-          startHour={startHour}
-          endHour={24}
-          hourHeight={38}
-          onPressPing={(id) => router.push({ pathname: '/ping/[id]', params: { id } })}
-          onPressFree={(p, w) => (p.profile?.id === meId ? router.push('/availability') : planWith([p.profile!.id], w.start, w.end))}
-        />
-
-        <Row gap={Spacing.lg} style={{ flexWrap: 'wrap' }}>
-          <Row gap={6}>
-            <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: Colors.free }} />
-            <T variant="caption">Free</T>
-          </Row>
-          <Row gap={6}>
-            <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: Colors.accent }} />
-            <T variant="caption">Free with you</T>
-          </Row>
-          <Row gap={6}>
-            <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: Colors.text }} />
-            <T variant="caption">Pinged</T>
-          </Row>
-        </Row>
-        <T variant="caption">
-          Tap someone&apos;s time to make plans with them.
-          {busyFriends > 0 ? ` ${busyFriends} friend${busyFriends === 1 ? ' hasn’t' : 's haven’t'} shared free time yet.` : ''}
+      <View style={{ gap: 4 }}>
+        <T variant="body" color={Colors.textSecondary}>
+          {new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
         </T>
+        <T variant="largeTitle">{firstName ? `Hi, ${firstName}` : 'Hi there'}</T>
       </View>
 
-      {best ? (
-        <View style={{ gap: Spacing.lg }}>
-          <T variant="title">
-            You & {joinNames(bestWith.map((p) => displayName(p).split(' ')[0]))} are free {formatTime(best.start)}–{formatTime(best.end)}
+      <Row gap={10}>
+        <Chip label="Today" selected={which === 'today'} onPress={() => setWhich('today')} />
+        <Chip label="Tomorrow" selected={which === 'tomorrow'} onPress={() => setWhich('tomorrow')} />
+      </Row>
+
+      {/* 1. Me */}
+      <Animated.View key={`me-${which}`} entering={FadeIn.duration(200)} style={{ gap: Spacing.md }}>
+        {mine.length ? (
+          <>
+            <T variant="title">You&apos;re free {mine.map(span).join(', ')}</T>
+            <Pressable onPress={() => router.push('/availability')} hitSlop={8}>
+              <T variant="label" style={{ textDecorationLine: 'underline' }}>
+                Change my free times
+              </T>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <T variant="title">Are you free {dayWord}?</T>
+            <T variant="body" color={Colors.textSecondary}>
+              Tap the green button at the bottom to tell your friends.
+            </T>
+          </>
+        )}
+      </Animated.View>
+
+      {/* 2. Friends */}
+      <Animated.View key={`friends-${which}`} entering={FadeIn.duration(200)} style={{ gap: Spacing.sm }}>
+        <T variant="title">Friends free {dayWord}</T>
+        {!hasFriends ? (
+          <View style={{ gap: Spacing.md, paddingTop: Spacing.sm }}>
+            <T variant="body" color={Colors.textSecondary}>
+              Add friends to see when they&apos;re free.
+            </T>
+            <Button title="Add friends" icon="addPerson" onPress={() => router.navigate('/friends')} style={{ alignSelf: 'flex-start' }} />
+          </View>
+        ) : friendsFree.length === 0 ? (
+          <T variant="body" color={Colors.textSecondary} style={{ paddingTop: Spacing.sm }}>
+            No one has said they&apos;re free {dayWord} yet. We&apos;ll show them here when they do.
           </T>
-          <Row gap={Spacing.md}>
-            <Button title="Make plans" onPress={() => planWith(bestWith.map((p) => p.id), best.start, best.end)} />
-            <Button title={nudged ? 'Nudged' : 'Nudge'} icon={nudged ? 'check' : 'hand'} variant="secondary" disabled={nudged} onPress={nudge} />
-          </Row>
+        ) : (
+          <View>
+            {friendsFree.map((f) => (
+              <FriendRow key={f.profile.id} f={f} onAsk={() => ask(f)} />
+            ))}
+          </View>
+        )}
+        {hasFriends ? (
+          <Pressable onPress={() => router.navigate('/calendar')} hitSlop={8} style={{ paddingTop: Spacing.sm }}>
+            <T variant="label" style={{ textDecorationLine: 'underline' }}>
+              See the whole week
+            </T>
+          </Pressable>
+        ) : null}
+      </Animated.View>
+
+      {/* 3. Next plan */}
+      {nextPlan && data ? (
+        <View style={{ gap: Spacing.md }}>
+          <T variant="title">Your next hangout</T>
+          <ActivityCard activity={nextPlan} profiles={data.profiles} meId={meId} height={220} />
         </View>
       ) : null}
-
-      <Section title="Coming up">
-        {data && data.activities.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={cardWidth + 14}
-            decelerationRate="fast"
-            style={{ marginHorizontal: -20, overflow: 'visible' }}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 14, paddingBottom: 24 }}>
-            {data.activities.map((a) => (
-              <View key={a.id} style={{ width: data.activities.length === 1 ? cardWidth + 36 : cardWidth }}>
-                <ActivityCard activity={a} profiles={data.profiles} meId={meId} height={260} />
-              </View>
-            ))}
-          </ScrollView>
-        ) : (
-          <Empty
-            icon="calendar"
-            title="Nothing planned yet"
-            body="Tap someone's free time above, or start a hangout."
-            action={<Button title="New hangout" onPress={() => router.push('/activity/new')} />}
-          />
-        )}
-      </Section>
     </Screen>
   );
 }

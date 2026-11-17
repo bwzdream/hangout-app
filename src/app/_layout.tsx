@@ -51,12 +51,13 @@ function RootNavigator() {
 
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ping/new" options={{ presentation: 'modal', title: 'New ping' }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="ping/new" options={{ presentation: 'modal', title: "I'm free" }} />
         <Stack.Screen name="ping/[id]" options={{ presentation: 'fullScreenModal', headerShown: false }} />
-        <Stack.Screen name="activity/new" options={{ presentation: 'modal', title: 'New hangout' }} />
+        <Stack.Screen name="activity/new" options={{ presentation: 'modal', title: 'Plan a hangout' }} />
         <Stack.Screen name="activity/[id]" options={{ title: '' }} />
-        <Stack.Screen name="availability" options={{ title: 'Free time' }} />
-        <Stack.Screen name="circles" options={{ title: 'Circles' }} />
+        <Stack.Screen name="availability" options={{ title: 'My free times' }} />
+        <Stack.Screen name="circles" options={{ title: 'Groups' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal', title: 'Edit profile' }} />
       </Stack.Protected>
     </Stack>

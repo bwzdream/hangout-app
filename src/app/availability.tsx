@@ -15,9 +15,9 @@ import { PRESETS, minuteOfDay, type TimeRange } from '@/lib/when';
 import { useAuth } from '@/providers/auth';
 
 const QUICK = [
-  { label: 'Weeknights', days: [1, 2, 3, 4], start: 18 * 60, end: 22 * 60 },
-  { label: 'Friday nights', days: [5], start: 18 * 60, end: 23 * 60 + 59 },
-  { label: 'Weekend afternoons', days: [0, 6], start: 11 * 60, end: 17 * 60 },
+  { label: 'Weekday evenings (6–10pm)', days: [1, 2, 3, 4], start: 18 * 60, end: 22 * 60 },
+  { label: 'Friday nights (6pm–midnight)', days: [5], start: 18 * 60, end: 23 * 60 + 59 },
+  { label: 'Weekend daytime (11am–5pm)', days: [0, 6], start: 11 * 60, end: 17 * 60 },
 ];
 
 const timeLabel = (m: number) => (m >= 1439 ? 'midnight' : minutesToLabel(m));
@@ -93,7 +93,7 @@ export default function Availability() {
       <View style={{ gap: Spacing.md }}>
         <T variant="largeTitle">When are you usually free?</T>
         <T variant="body" color={Colors.textSecondary}>
-          Friends see these times, minus anything busy on your calendar.
+          Your friends will see these times. Tap ✕ to remove one.
         </T>
       </View>
 
@@ -124,7 +124,7 @@ export default function Availability() {
       <View style={{ gap: Spacing.lg }}>
         {groups.length === 0 ? (
           <T variant="body" color={Colors.textSecondary}>
-            Nothing yet. Tap one to start:
+            Nothing yet. Tap one below to add it:
           </T>
         ) : null}
         {groups.map((g) => (

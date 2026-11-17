@@ -10,6 +10,7 @@ import { useData } from '@/hooks/use-data';
 import { confirm, errorMessage, notify } from '@/lib/alert';
 import { acceptFriendRequest, getFriends, removeFriendship, searchProfiles, sendFriendRequest } from '@/lib/api';
 import type { Profile } from '@/lib/types';
+import { inviteMessage } from '@/lib/invite';
 import { useAuth } from '@/providers/auth';
 
 const COLUMNS = 3;
@@ -52,10 +53,10 @@ export default function Friends() {
   };
 
   const invite = async () => {
-    const message = `Find me on Pingle: @${me?.username}`;
+    const message = inviteMessage(me?.username);
     if (Platform.OS === 'web') {
       await navigator.clipboard?.writeText(message);
-      notify('Copied', 'Invite copied to your clipboard.');
+      notify('Copied', 'Paste it into a text to your friend.');
     } else {
       await Share.share({ message });
     }
@@ -67,13 +68,13 @@ export default function Friends() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
-      <Header title="Your people" />
+      <Header title="Friends" />
 
-      <Input value={query} onChangeText={setQuery} placeholder="Find someone by name or @username" autoCapitalize="none" autoCorrect={false} />
+      <Input value={query} onChangeText={setQuery} placeholder="Search by name" autoCapitalize="none" autoCorrect={false} />
 
       {searching ? (
         <View style={{ gap: Spacing.lg }}>
-          {results.length === 0 ? <T variant="body" color={Colors.textSecondary}>No one by that name yet. Send them an invite!</T> : null}
+          {results.length === 0 ? <T variant="body" color={Colors.textSecondary}>No one by that name yet. Tap Invite to text them a link.</T> : null}
           {results.map((p) => {
             const f = data?.friendshipByUser[p.id];
             return (
@@ -105,7 +106,7 @@ export default function Friends() {
                 <Avatar profile={profile} size={52} />
                 <View style={{ flex: 1 }}>
                   <T variant="title" color={Colors.onAccent}>
-                    {displayName(profile).split(' ')[0]} wants to hang
+                    {displayName(profile).split(' ')[0]} wants to be friends
                   </T>
                   <T variant="caption" color={Colors.onAccent} style={{ opacity: 0.7 }}>
                     @{profile.username}
@@ -116,7 +117,7 @@ export default function Friends() {
                 <Button title="Accept" onPress={() => run(() => acceptFriendRequest(friendship.id))} />
                 <Pressable onPress={() => run(() => removeFriendship(friendship.id))} hitSlop={8}>
                   <T variant="label" color={Colors.onAccent}>
-                    Not now
+                    No thanks
                   </T>
                 </Pressable>
               </Row>
@@ -126,11 +127,11 @@ export default function Friends() {
 
       {!searching ? (
         <Section
-          title={data && data.friends.length > 0 ? `Friends · ${data.friends.length}` : 'Friends'}
+          title={data && data.friends.length > 0 ? `Your friends · ${data.friends.length}` : 'Your friends'}
           action={
             <Pressable onPress={() => router.push('/circles')} hitSlop={8}>
               <T variant="label" style={{ textDecorationLine: 'underline' }}>
-                Circles
+                Groups
               </T>
             </Pressable>
           }>
@@ -170,7 +171,7 @@ export default function Friends() {
                 badge={
                   <View style={{ backgroundColor: Colors.surfaceRaised, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
                     <T variant="caption" style={{ fontSize: 11 }}>
-                      sent
+                      waiting
                     </T>
                   </View>
                 }
@@ -184,7 +185,7 @@ export default function Friends() {
           </View>
           {data && data.friends.length === 0 ? (
             <T variant="body" color={Colors.textSecondary}>
-              Search above or tap Invite to bring your crew.
+              Tap Invite to text a friend a link, or search for them by name above.
             </T>
           ) : null}
         </Section>

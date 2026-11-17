@@ -10,7 +10,6 @@ import { useData } from '@/hooks/use-data';
 import { errorMessage, notify } from '@/lib/alert';
 import { getMyRules } from '@/lib/api';
 import { canSyncDeviceCalendar, syncDeviceCalendar } from '@/lib/calendar';
-import { WEEKDAYS, minutesToLabel } from '@/lib/time';
 import { useAuth } from '@/providers/auth';
 
 function Tile({
@@ -56,7 +55,7 @@ function Tile({
         <T variant="title" color={mint ? Colors.onAccent : Colors.text} style={{ fontSize: 24, lineHeight: 28 }}>
           {title}
         </T>
-        <T variant="caption" color={mint ? Colors.onAccent : Colors.textSecondary} numberOfLines={2} style={mint ? { opacity: 0.7 } : undefined}>
+        <T variant="caption" color={mint ? Colors.onAccent : Colors.textSecondary} numberOfLines={4} style={mint ? { opacity: 0.7 } : undefined}>
           {body}
         </T>
       </View>
@@ -85,11 +84,8 @@ export default function Me() {
     }
   };
 
-  const days = rules ? [...new Set(rules.map((r) => WEEKDAYS[r.weekday]))] : [];
   const routine =
-    rules && rules.length > 0
-      ? `${days.length > 3 ? `${days.length} days a week` : days.join(', ')} from ${minutesToLabel(Math.min(...rules.map((r) => r.start_minute)))}`
-      : 'Tell friends when you’re usually around';
+    rules && rules.length > 0 ? 'Your usual free times are set. Tap to see or change them.' : 'Tap to tell friends when you’re usually free.'
 
   return (
     <Screen>
@@ -109,11 +105,11 @@ export default function Me() {
       </View>
 
       <Row gap={Spacing.md} style={{ alignItems: 'stretch' }}>
-        <Tile icon="clock" tone="mint" title="Free time" body={routine} onPress={() => router.push('/availability')} />
+        <Tile icon="clock" tone="mint" title="My free times" body={routine} onPress={() => router.push('/availability')} />
         <Tile
           icon="sync"
-          title="Calendars"
-          body={canSyncDeviceCalendar ? 'Sync busy times. Event names stay private.' : 'Sync from the phone app.'}
+          title="My calendar"
+          body={canSyncDeviceCalendar ? 'Tap to connect, so friends don’t see you as free when you’re busy.' : 'Open Pingle on your phone to connect your calendar.'}
           onPress={canSyncDeviceCalendar ? sync : undefined}
           busy={syncing}
         />
@@ -127,7 +123,7 @@ export default function Me() {
         </Pressable>
         <Pressable onPress={() => router.push('/circles')} hitSlop={8}>
           <T variant="label" style={{ textDecorationLine: 'underline' }}>
-            Circles
+            Groups
           </T>
         </Pressable>
         <Pressable onPress={signOut} hitSlop={8}>
