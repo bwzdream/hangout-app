@@ -5,7 +5,8 @@ import { Pressable, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { ActivityCard } from '@/components/cards';
-import { Avatar, Button, Chip, Loading, Row, Screen, T, displayName } from '@/components/ui';
+import { FreeTimeline } from '@/components/free-timeline';
+import { Button, Chip, Loading, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
 import { getAvailability, getFriends, getMyRules, getProfiles, listActivePings, listUpcomingActivities } from '@/lib/api';
@@ -19,39 +20,8 @@ import { useAuth } from '@/providers/auth';
 
 const span = (w: Interval) => `${formatTime(w.start)} – ${formatTime(w.end)}`;
 
-type FriendToday = { profile: Profile; windows: Interval[]; together: Interval[]; note: string | null };
-
-/** One friend: who, when, and one obvious button. */
-function FriendRow({ f, onAsk }: { f: FriendToday; onAsk: () => void }) {
-  return (
-    <View style={{ gap: Spacing.md, paddingVertical: Spacing.lg, borderTopWidth: 1, borderTopColor: Colors.hairline }}>
-      <Row gap={Spacing.lg}>
-        <Avatar profile={f.profile} size={56} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <T variant="heading" style={{ fontSize: 20 }}>
-            {displayName(f.profile)}
-          </T>
-          <T variant="body">Free {f.windows.map(span).join(', ')}</T>
-          {f.note ? (
-            <T variant="body" color={Colors.textSecondary}>
-              “{f.note}”
-            </T>
-          ) : null}
-        </View>
-      </Row>
-      <Row gap={Spacing.md} style={{ flexWrap: 'wrap' }}>
-        <Button title="Ask to hang out" size="sm" onPress={onAsk} />
-        {f.together.length ? (
-          <View style={{ backgroundColor: Colors.accentDim, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <T variant="caption" color={Colors.accentInk} style={{ fontWeight: '700' }}>
-              You&apos;re free then too
-            </T>
-          </View>
-        ) : null}
-      </Row>
-    </View>
-  );
-}
+type Slot = { window: Interval; both: Interval | null; note: string | null };
+type FriendToday = { profile: Profile; slots: Slot[]; best: Slot };
 
 export default function Home() {
   const { session, profile } = useAuth();
@@ -106,19 +76,26 @@ export default function Home() {
   const friendsFree: FriendToday[] = (data?.friends ?? [])
     .map((f) => {
       const ping = (data?.pings ?? []).find((p) => p.sender_id === f.id && new Date(p.starts_at).getTime() < range.end && new Date(p.ends_at).getTime() > range.start);
-      // Their usual/one-off free time, plus the time they just posted.
       const posted = ping ? clip([{ start: new Date(ping.starts_at).getTime(), end: new Date(ping.ends_at).getTime() }], range) : [];
+      // Their usual/one-off free time, plus the time they just posted.
       const windows = merge([...(data?.availability[f.id] ? freeWindows(data.availability[f.id], range) : []), ...posted]);
-      return { profile: f, windows, together: intersect(mine, windows), note: ping?.message || null };
+      const slots: Slot[] = windows.map((w) => {
+        // The longest stretch of this slot when you're free too.
+        const both = intersect(mine, [w]).sort((x, y) => y.end - y.start - (x.end - x.start))[0] ?? null;
+        const note = ping && posted.some((p) => p.start < w.end && p.end > w.start) ? ping.message || null : null;
+        return { window: w, both, note };
+      });
+      const best = slots.find((s) => s.both) ?? slots[0];
+      return { profile: f, slots, best };
     })
-    .filter((f) => f.windows.length > 0)
-    .sort((a, b) => b.together.length - a.together.length || a.windows[0].start - b.windows[0].start);
+    .filter((f) => f.slots.length > 0)
+    .sort((a, b) => Number(!!b.best.both) - Number(!!a.best.both) || a.best.window.start - b.best.window.start);
 
-  const ask = (f: FriendToday) => {
-    const w = f.together[0] ?? f.windows[0];
+  const ask = (f: FriendToday, slot: Slot) => {
+    const w = slot.both ?? slot.window;
     router.push({
       pathname: '/activity/new',
-      params: { start: String(w.start), end: String(Math.min(w.end, w.start + 3 * 3600000)), invite: f.profile.id, title: f.note ?? '' },
+      params: { start: String(w.start), end: String(Math.min(w.end, w.start + 3 * 3600000)), invite: f.profile.id, title: slot.note ?? '' },
     });
   };
 
@@ -163,7 +140,7 @@ export default function Home() {
 
       {/* 2. Friends */}
       <Animated.View key={`friends-${which}`} entering={FadeIn.duration(200)} style={{ gap: Spacing.sm }}>
-        <T variant="title">Friends free {dayWord}</T>
+        <T variant="title">Who&apos;s free {dayWord}</T>
         {!hasFriends ? (
           <View style={{ gap: Spacing.md, paddingTop: Spacing.sm }}>
             <T variant="body" color={Colors.textSecondary}>
@@ -176,10 +153,22 @@ export default function Home() {
             No one has said they&apos;re free {dayWord} yet. We&apos;ll show them here when they do.
           </T>
         ) : (
-          <View>
-            {friendsFree.map((f) => (
-              <FriendRow key={f.profile.id} f={f} onAsk={() => ask(f)} />
-            ))}
+          <View style={{ gap: Spacing.lg, paddingTop: Spacing.sm }}>
+            <T variant="body" color={Colors.textSecondary}>
+              Tap a friend to ask them to hang out.
+            </T>
+            <FreeTimeline
+              day={day}
+              now={now}
+              mine={mine}
+              blocks={friendsFree.flatMap((f) =>
+                f.slots.map((slot) => ({ key: `${f.profile.id}-${slot.window.start}`, profile: f.profile, window: slot.window, both: slot.both, note: slot.note })),
+              )}
+              onPress={(b) => {
+                const f = friendsFree.find((x) => x.profile.id === b.profile.id)!;
+                ask(f, f.slots.find((sl) => sl.window.start === b.window.start)!);
+              }}
+            />
           </View>
         )}
         {hasFriends ? (

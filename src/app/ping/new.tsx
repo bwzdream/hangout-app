@@ -3,15 +3,15 @@
  *   1. When?  2. (optional) What do you feel like doing?  3. Tell my friends.
  * The post disappears on its own when your free time ends.
  */
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AudiencePicker, type Audience } from '@/components/audience-picker';
 import { HandLogo } from '@/components/logo';
+import { SentCelebration } from '@/components/sent-celebration';
 import { PopButton } from '@/components/playful';
-import { Button, Chip, Row, Screen, T } from '@/components/ui';
+import { Chip, Row, Screen, T } from '@/components/ui';
 import { WhenField } from '@/components/when-field';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
@@ -19,10 +19,12 @@ import { errorMessage, notify } from '@/lib/alert';
 import { addFreeSlot, addRules, getMyCircles, sendPing } from '@/lib/api';
 import { formatTime } from '@/lib/time';
 import { PRESETS, minuteOfDay, type TimeRange } from '@/lib/when';
+import { useAuth } from '@/providers/auth';
 
 const IDEAS = ['Dinner', 'Coffee', 'Drinks', 'A walk', 'Watch something', 'Anything!'];
 
 export default function NewPing() {
+  const { profile } = useAuth();
   const [message, setMessage] = useState('');
   const [range, setRange] = useState<TimeRange>(() => (PRESETS[1].range() ?? PRESETS[0].range())!);
   const [repeat, setRepeat] = useState(false);
@@ -68,18 +70,10 @@ export default function NewPing() {
     audience.visibility === 'circle' ? (circles ?? []).find((c) => c.id === audience.circleId)?.name ?? 'your group' : 'all your friends';
 
   if (sent) {
+    const circle = audience.visibility === 'circle' ? (circles ?? []).find((c) => c.id === audience.circleId) : null;
     return (
-      <Screen edges={['bottom']} scroll={false} contentStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.xl }}>
-        <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <HandLogo size={84} wave />
-        </View>
-        <T variant="display" style={{ textAlign: 'center' }}>
-          Done!
-        </T>
-        <T variant="body" color={Colors.textSecondary} style={{ textAlign: 'center', maxWidth: 300 }}>
-          We told {who} you&apos;re free {formatTime(range.start)} – {formatTime(range.end)}. We&apos;ll let you know when someone wants to hang out.
-        </T>
-        <Button title="Back home" size="lg" onPress={() => router.back()} style={{ alignSelf: 'stretch' }} />
+      <Screen edges={['bottom']} center={false}>
+        <SentCelebration me={profile} range={range} note={message.trim()} circleMemberIds={circle ? circle.memberIds : null} />
       </Screen>
     );
   }
