@@ -108,3 +108,15 @@ test('ics export', () => {
   assert.match(ics, /DTSTART:20261113T230000Z/);
   assert.match(ics, /SUMMARY:Tacos\\, yay/);
 });
+
+test('phone & email normalisation for contact matching', async () => {
+  const { normalizePhone, emailKey, phoneKey } = await import('../src/lib/phone');
+  assert.equal(normalizePhone('(555) 123-4567'), '15551234567');
+  assert.equal(normalizePhone('+1 555 123 4567'), '15551234567');
+  assert.equal(normalizePhone('1-555-123-4567'), '15551234567');
+  assert.equal(normalizePhone('+44 20 7946 0958'), '442079460958');
+  assert.equal(normalizePhone('0044 20 7946 0958'), '442079460958');
+  assert.equal(normalizePhone('123'), null);
+  assert.equal(emailKey('  Sam@X.com '), 'email:sam@x.com');
+  assert.equal(phoneKey('15551234567'), 'phone:15551234567');
+});

@@ -70,6 +70,8 @@ export default function Friends() {
     <Screen refreshing={refreshing} onRefresh={refresh}>
       <Header title="Friends" />
 
+      <Button title="Find friends in my contacts" icon="friends" size="lg" onPress={() => router.push('/find-friends')} />
+
       <Input value={query} onChangeText={setQuery} placeholder="Search by name" autoCapitalize="none" autoCorrect={false} />
 
       {searching ? (

@@ -52,7 +52,13 @@
         }
       ],
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Pingle checks your contacts so you can see which friends are already here and invite the rest. Your contacts are never uploaded."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

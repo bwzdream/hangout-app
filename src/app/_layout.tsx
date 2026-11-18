@@ -58,6 +58,7 @@ function RootNavigator() {
         <Stack.Screen name="activity/[id]" options={{ title: '' }} />
         <Stack.Screen name="availability" options={{ title: 'My free times' }} />
         <Stack.Screen name="circles" options={{ title: 'Groups' }} />
+        <Stack.Screen name="find-friends" options={{ title: 'Find friends' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal', title: 'Edit profile' }} />
       </Stack.Protected>
     </Stack>

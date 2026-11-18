@@ -137,4 +137,20 @@ assert.equal((await as(B, `select * from availability_rules`)).length, 0);
 assert.equal((await as(B, `select * from pings`)).length, 0);
 console.log('✓ unfriending removes access to availability & pings (joined/invited activities stay visible)');
 
+// Contact matching
+const { createHash } = await import('node:crypto');
+const h = (v) => createHash('sha256').update(v).digest('hex');
+assert.equal((await as(A, `select * from contact_hashes`)).length, 1, 'own email hash only');
+const bEmail = h('email:sam@x.com');
+let m = await as(A, `select id, kind, verified from match_contacts(array['${bEmail}', '${h('email:nobody@x.com')}'])`);
+assert.deepEqual(m, [{ id: B, kind: 'email', verified: true }]);
+assert.equal((await as(A, `select * from match_contacts(array['${h('email:alex@x.com')}'])`)).length, 0, 'never matches yourself');
+assert.ok(await fails(A, `insert into contact_hashes (user_id, kind, hash) values ('${A}', 'email', '${h('email:sam@x.com')}')`), 'cannot claim an email');
+assert.ok(await fails(A, `insert into contact_hashes (user_id, kind, hash) values ('${B}', 'phone', '${h('phone:15551234567')}')`), 'cannot add for others');
+await as(A, `insert into contact_hashes (user_id, kind, hash) values ('${A}', 'phone', '${h('phone:15551234567')}')`);
+m = await as(B, `select id, kind, verified from match_contacts(array['${h('phone:15551234567')}'])`);
+assert.deepEqual(m, [{ id: A, kind: 'phone', verified: false }]);
+assert.equal((await as(B, `select * from contact_hashes`)).length, 1, 'cannot read other users hashes');
+console.log('✓ contact matching: hashed emails/phones match, never yourself, no reading others, no claiming emails');
+
 console.log('\nAll RLS checks passed 🎉');

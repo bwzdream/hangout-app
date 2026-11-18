@@ -146,7 +146,7 @@ export default function Home() {
             <T variant="body" color={Colors.textSecondary}>
               Add friends to see when they&apos;re free.
             </T>
-            <Button title="Add friends" icon="addPerson" onPress={() => router.navigate('/friends')} style={{ alignSelf: 'flex-start' }} />
+            <Button title="Find friends in my contacts" icon="friends" onPress={() => router.push('/find-friends')} style={{ alignSelf: 'flex-start' }} />
           </View>
         ) : friendsFree.length === 0 ? (
           <T variant="body" color={Colors.textSecondary} style={{ paddingTop: Spacing.sm }}>

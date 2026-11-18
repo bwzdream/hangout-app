@@ -11,7 +11,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 import { Icon } from '@/components/icon';
 import { HandLogo } from '@/components/logo';
 import { Bouncy, PopButton } from '@/components/playful';
-import { Row, Screen, T } from '@/components/ui';
+import { Button, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { errorMessage, notify } from '@/lib/alert';
 import { addRules } from '@/lib/api';
@@ -149,17 +149,18 @@ export default function Welcome() {
           <View style={{ gap: Spacing.sm }}>
             <T variant="largeTitle">Bring your friends</T>
             <T variant="body" color={Colors.textSecondary}>
-              Send them a text with a link. Once they join, you&apos;ll see when they&apos;re free.
+              See which of your contacts are already here, and invite the rest with a text.
             </T>
           </View>
-          <PopButton onPress={invite}>
+          <PopButton onPress={() => router.push('/find-friends')}>
             <Row style={{ padding: 18, justifyContent: 'center' }} gap={10}>
-              <Icon name="share" size={20} color={Colors.onAccent} />
+              <Icon name="friends" size={20} color={Colors.onAccent} />
               <T variant="title" color={Colors.onAccent}>
-                Text an invite
+                Find friends in my contacts
               </T>
             </Row>
           </PopButton>
+          <Button title="Just text an invite" variant="secondary" size="lg" onPress={invite} />
           <Pressable onPress={() => setStep(2)} hitSlop={10} style={{ alignSelf: 'center' }}>
             <T variant="label" style={{ textDecorationLine: 'underline' }}>
               Next
