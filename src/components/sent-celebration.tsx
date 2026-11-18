@@ -108,9 +108,8 @@ function FreeCard({ me, range, note, sentAt }: { me: Profile | null; range: Inte
           </View>
           <HandLogo size={44} />
         </Row>
-        <T variant="display" color={Colors.onAccent} style={{ fontSize: 46, lineHeight: 50 }}>
-          {formatTime(range.start)} –{'\n'}
-          {formatTime(range.end)}
+        <T variant="display" color={Colors.onAccent} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontSize: 42, lineHeight: 48 }}>
+          {formatTime(range.start)} – {formatTime(range.end)}
         </T>
         {note ? (
           <T variant="title" color={Colors.onAccent} style={{ fontSize: 22, lineHeight: 26 }}>
