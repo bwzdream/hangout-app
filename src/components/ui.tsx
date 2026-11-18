@@ -23,7 +23,7 @@ import { Bouncy } from './bouncy';
 import { Icon, type IconName } from './icon';
 
 // ─── Text ────────────────────────────────────────────────────
-type Variant = 'display' | 'largeTitle' | 'title' | 'heading' | 'body' | 'label' | 'caption' | 'overline';
+type Variant = 'display' | 'largeTitle' | 'title' | 'heading' | 'body' | 'label' | 'caption' | 'overline' | 'button';
 
 const SERIF_VARIANTS = new Set<Variant>(['display', 'largeTitle', 'title']);
 
@@ -49,6 +49,8 @@ const text = StyleSheet.create(
         label: { fontFamily: body, fontSize: 15, lineHeight: 20, fontWeight: '500', letterSpacing: -0.15 },
         caption: { fontFamily: body, fontSize: 13, lineHeight: 18, fontWeight: '400' },
         overline: { fontFamily: body, fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.9, textTransform: 'uppercase' },
+        // Buttons always use the sans font, never the serif.
+        button: { fontFamily: body, fontSize: 18, lineHeight: 24, fontWeight: '700', letterSpacing: -0.2 },
       }
     : {
         display: { fontFamily: display, fontSize: 52, lineHeight: 52, fontWeight: '900', letterSpacing: -2 },
@@ -59,6 +61,7 @@ const text = StyleSheet.create(
         label: { fontFamily: body, fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.15 },
         caption: { fontFamily: body, fontSize: 13, lineHeight: 18, fontWeight: '500' },
         overline: { fontFamily: body, fontSize: 12, lineHeight: 16, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' },
+        button: { fontFamily: body, fontSize: 18, lineHeight: 24, fontWeight: '800', letterSpacing: -0.2 },
       },
 );
 

@@ -133,7 +133,7 @@ export default function NewPing() {
       <PopButton onPress={send} disabled={sending}>
         <Row style={{ padding: 20, justifyContent: 'center' }} gap={10}>
           <HandLogo size={30} />
-          <T variant="title" color={Colors.onAccent}>
+          <T variant="button" color={Colors.onAccent}>
             {sending ? 'Sending…' : 'Tell my friends'}
           </T>
         </Row>

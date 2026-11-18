@@ -229,7 +229,7 @@ export default function NewActivity() {
 
       <PopButton onPress={save} disabled={saving}>
         <Row style={{ padding: 20, justifyContent: 'center' }}>
-          <T variant="title" color={Colors.onAccent}>
+          <T variant="button" color={Colors.onAccent}>
             {saving ? 'Sending…' : audience.visibility === 'invite' ? 'Send invite' : 'Share with friends'}
           </T>
         </Row>

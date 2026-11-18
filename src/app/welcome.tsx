@@ -137,7 +137,7 @@ export default function Welcome() {
             ))}
           </View>
           <PopButton onPress={saveRoutine} disabled={saving}>
-            <T variant="title" color={Colors.onAccent} style={{ textAlign: 'center', padding: 18 }}>
+            <T variant="button" color={Colors.onAccent} style={{ textAlign: 'center', padding: 18 }}>
               {picked.length ? 'Next' : 'It changes every week'}
             </T>
           </PopButton>
@@ -155,7 +155,7 @@ export default function Welcome() {
           <PopButton onPress={() => router.push('/find-friends')}>
             <Row style={{ padding: 18, justifyContent: 'center' }} gap={10}>
               <Icon name="friends" size={20} color={Colors.onAccent} />
-              <T variant="title" color={Colors.onAccent}>
+              <T variant="button" color={Colors.onAccent}>
                 Find friends in my contacts
               </T>
             </Row>
@@ -181,7 +181,7 @@ export default function Welcome() {
             Whenever you feel like hanging out, tap the big green button at the bottom. We&apos;ll let your friends know.
           </T>
           <PopButton onPress={finish} style={{ alignSelf: 'stretch' }}>
-            <T variant="title" color={Colors.onAccent} style={{ textAlign: 'center', padding: 18 }}>
+            <T variant="button" color={Colors.onAccent} style={{ textAlign: 'center', padding: 18 }}>
               Start
             </T>
           </PopButton>
