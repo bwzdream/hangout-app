@@ -139,85 +139,84 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
   );
 }
 
+const joinWords = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+/** One person nearby. Only the essentials up front; details behind "More about…". */
 function PersonCard({ s, onRequest, onBlock }: { s: NearbySlot; onRequest: () => void; onBlock: () => void }) {
+  const [open, setOpen] = useState(false);
+  const mint = s.overlaps_mine;
+  const ink = mint ? Colors.onAccent : Colors.text;
+  const soft = mint ? Colors.onAccent : Colors.textSecondary;
+  const name = (s.display_name || s.username).split(' ')[0];
   const requested = s.my_request === 'pending' || s.my_request === 'accepted';
+  const details = [
+    [labelOf(GENDERS, s.gender), labelOf(SEXUALITIES, s.sexuality)].filter(Boolean).join(' · '),
+    s.looking_for.length ? `Looking for ${joinWords(s.looking_for.map((k) => labelOf(LOOKING_FOR, k).toLowerCase()))}` : '',
+    s.interests.length ? `Into ${joinWords(s.interests.map((i) => i.toLowerCase()))}` : '',
+  ].filter(Boolean);
+
   return (
-    <View style={{ backgroundColor: s.overlaps_mine ? Colors.accent : Colors.surface, borderRadius: 26, padding: 18, gap: Spacing.md }}>
+    <View style={{ backgroundColor: mint ? Colors.accent : Colors.surface, borderRadius: 28, padding: 20, gap: Spacing.md }}>
       <Row gap={Spacing.md}>
-        <Avatar profile={asProfile(s)} size={52} />
-        <View style={{ flex: 1 }}>
-          <T variant="heading">
-            {(s.display_name || s.username).split(' ')[0]}
-            {s.age ? `, ${s.age}` : ''}
-          </T>
-          <T variant="caption" color={s.overlaps_mine ? Colors.onAccent : Colors.textSecondary}>
-            {[
-              s.distance_km <= 1 ? 'Less than 1 km away' : `About ${s.distance_km} km away`,
-              labelOf(GENDERS, s.gender),
-              labelOf(SEXUALITIES, s.sexuality),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </T>
-        </View>
-        <Pressable onPress={onBlock} hitSlop={10} accessibilityLabel="Block">
-          <T variant="caption" color={s.overlaps_mine ? Colors.onAccent : Colors.textTertiary}>
-            Block
-          </T>
-        </Pressable>
+        <Avatar profile={asProfile(s)} size={44} />
+        <T variant="heading" color={ink} style={{ flex: 1 }}>
+          {name}
+          {s.age ? `, ${s.age}` : ''}
+        </T>
+        <T variant="caption" color={soft}>
+          {s.distance_km <= 1 ? '< 1 km' : `${s.distance_km} km`}
+        </T>
       </Row>
-      <View style={{ gap: 2 }}>
-        <T variant="title" color={s.overlaps_mine ? Colors.onAccent : Colors.text} style={{ fontSize: 24, lineHeight: 28 }}>
+
+      <View style={{ gap: 4 }}>
+        <T variant="title" color={ink} style={{ fontSize: 26, lineHeight: 30 }}>
           {formatDay(s.starts_at)}, {span(s.starts_at, s.ends_at)}
         </T>
         {s.note ? (
-          <T variant="body" color={s.overlaps_mine ? Colors.onAccent : Colors.textSecondary}>
+          <T variant="body" color={ink}>
             “{s.note}”
           </T>
         ) : null}
-        {s.overlaps_mine ? (
-          <T variant="label" color={Colors.onAccent} style={{ fontWeight: '700' }}>
-            ✓ You’re free then too
+        {s.shared_interests.length ? (
+          <T variant="body" color={soft}>
+            You both like {joinWords(s.shared_interests.map((i) => i.toLowerCase()))}
           </T>
         ) : null}
       </View>
-      {s.looking_for.length ? (
-        <T variant="body" color={s.overlaps_mine ? Colors.onAccent : Colors.text}>
-          Looking for: {s.looking_for.map((k) => labelOf(LOOKING_FOR, k).toLowerCase()).join(', ')}
-        </T>
+
+      {open ? (
+        <Animated.View entering={FadeIn.duration(180)} style={{ gap: 6 }}>
+          {details.map((d) => (
+            <T key={d} variant="body" color={soft}>
+              {d}
+            </T>
+          ))}
+          <Pressable onPress={onBlock} hitSlop={8} style={{ marginTop: 4 }}>
+            <T variant="label" color={soft} style={{ textDecorationLine: 'underline' }}>
+              Block {name}
+            </T>
+          </Pressable>
+        </Animated.View>
       ) : null}
-      {s.interests.length ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {[...s.shared_interests, ...s.interests.filter((i) => !s.shared_interests.includes(i))].slice(0, 6).map((i) => {
-            const shared = s.shared_interests.includes(i);
-            return (
-              <View
-                key={i}
-                style={{
-                  borderRadius: 999,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  backgroundColor: shared ? Colors.text : s.overlaps_mine ? 'rgba(20,20,20,0.08)' : Colors.surfaceRaised,
-                }}>
-                <T variant="caption" color={shared ? Colors.background : Colors.text} style={{ fontWeight: shared ? '700' : '500' }}>
-                  {shared ? `✓ ${i}` : i}
-                </T>
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
-      {requested ? (
-        <T variant="label" color={s.overlaps_mine ? Colors.onAccent : Colors.textSecondary}>
-          {s.my_request === 'accepted' ? 'They said yes! 🎉' : 'Request sent'}
-        </T>
-      ) : s.my_request === 'declined' ? (
-        <T variant="label" color={Colors.textSecondary}>
-          Not this time
-        </T>
-      ) : (
-        <Button title="Ask to hang out" onPress={onRequest} style={{ alignSelf: 'flex-start' }} />
-      )}
+
+      <Row style={{ justifyContent: 'space-between' }}>
+        {requested ? (
+          <T variant="label" color={soft}>
+            {s.my_request === 'accepted' ? 'They said yes! 🎉' : 'Request sent'}
+          </T>
+        ) : s.my_request === 'declined' ? (
+          <T variant="label" color={soft}>
+            Not this time
+          </T>
+        ) : (
+          <Button title="Ask to hang out" onPress={onRequest} />
+        )}
+        <Pressable onPress={() => setOpen((v) => !v)} hitSlop={10}>
+          <T variant="label" color={soft} style={{ textDecorationLine: 'underline' }}>
+            {open ? 'Less' : `More about ${name}`}
+          </T>
+        </Pressable>
+      </Row>
     </View>
   );
 }
@@ -375,7 +374,7 @@ export default function PublicScreen() {
         <View style={{ gap: 4 }}>
           <T variant="title">Free near you</T>
           <T variant="body" color={Colors.textSecondary}>
-            People within {status.radiusKm} km who fit what you’re looking for (and you fit theirs). Free at the same time and shared interests come first.
+            People within {status.radiusKm} km who fit what you’re looking for.
           </T>
         </View>
         {nearby.length === 0 ? (
