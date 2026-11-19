@@ -35,6 +35,13 @@ const ICONS = {
   logout: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
   globe: { ios: 'globe', android: 'public' },
   photo: { ios: 'photo.on.rectangle', android: 'photo_library' },
+  quote: { ios: 'quote.bubble', android: 'chat_bubble' },
+  heart: { ios: 'heart', android: 'favorite' },
+  tag: { ios: 'tag', android: 'sell' },
+  personSmall: { ios: 'person', android: 'person' },
+  target: { ios: 'scope', android: 'target' },
+  nearMe: { ios: 'location.fill', android: 'near_me' },
+  block: { ios: 'hand.raised', android: 'block' },
 } as const;
 
 export type IconName = keyof typeof ICONS;

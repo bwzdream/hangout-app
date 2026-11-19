@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { Icon } from '@/components/icon';
+import { Icon, type IconName } from '@/components/icon';
 import { NearbyIllustration } from '@/components/nearby-card';
 import { PopButton } from '@/components/playful';
 import { Avatar, Button, Chip, Loading, Row, Screen, T, displayName } from '@/components/ui';
@@ -139,9 +139,36 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
   );
 }
 
-const joinWords = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+/** Small rounded label, optionally highlighted. */
+function Pill({ label, strong, onMint }: { label: string; strong?: boolean; onMint?: boolean }) {
+  return (
+    <View
+      style={{
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        backgroundColor: strong ? Colors.text : onMint ? 'rgba(20,20,20,0.08)' : Colors.surfaceRaised,
+      }}>
+      <T variant="caption" color={strong ? Colors.background : Colors.text} style={{ fontWeight: strong ? '700' : '500' }}>
+        {label}
+      </T>
+    </View>
+  );
+}
 
-/** One person nearby. Only the essentials up front; details behind "More about…". */
+/** An icon + content row; keeps every piece of info lined up and scannable. */
+function InfoRow({ icon, color, children }: { icon: IconName; color: string; children: React.ReactNode }) {
+  return (
+    <Row gap={12} style={{ alignItems: 'flex-start' }}>
+      <View style={{ width: 22, alignItems: 'center', paddingTop: 2 }}>
+        <Icon name={icon} size={16} color={color} />
+      </View>
+      <View style={{ flex: 1, gap: 6 }}>{children}</View>
+    </Row>
+  );
+}
+
+/** One person nearby: header, then icon rows. Extra details behind "More about…". */
 function PersonCard({ s, onRequest, onBlock }: { s: NearbySlot; onRequest: () => void; onBlock: () => void }) {
   const [open, setOpen] = useState(false);
   const mint = s.overlaps_mine;
@@ -149,72 +176,133 @@ function PersonCard({ s, onRequest, onBlock }: { s: NearbySlot; onRequest: () =>
   const soft = mint ? Colors.onAccent : Colors.textSecondary;
   const name = (s.display_name || s.username).split(' ')[0];
   const requested = s.my_request === 'pending' || s.my_request === 'accepted';
-  const details = [
-    [labelOf(GENDERS, s.gender), labelOf(SEXUALITIES, s.sexuality)].filter(Boolean).join(' · '),
-    s.looking_for.length ? `Looking for ${joinWords(s.looking_for.map((k) => labelOf(LOOKING_FOR, k).toLowerCase()))}` : '',
-    s.interests.length ? `Into ${joinWords(s.interests.map((i) => i.toLowerCase()))}` : '',
-  ].filter(Boolean);
+  const identity = [labelOf(GENDERS, s.gender), labelOf(SEXUALITIES, s.sexuality)].filter(Boolean).join(' · ');
+  const others = s.interests.filter((i) => !s.shared_interests.includes(i));
 
   return (
-    <View style={{ backgroundColor: mint ? Colors.accent : Colors.surface, borderRadius: 28, padding: 20, gap: Spacing.md }}>
+    <View style={{ backgroundColor: mint ? Colors.accent : Colors.surface, borderRadius: 28, padding: 18, gap: 14 }}>
+      {/* Header */}
       <Row gap={Spacing.md}>
-        <Avatar profile={asProfile(s)} size={44} />
-        <T variant="heading" color={ink} style={{ flex: 1 }}>
-          {name}
-          {s.age ? `, ${s.age}` : ''}
-        </T>
-        <T variant="caption" color={soft}>
-          {s.distance_km <= 1 ? '< 1 km' : `${s.distance_km} km`}
-        </T>
+        <Avatar profile={asProfile(s)} size={48} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <T variant="heading" color={ink} style={{ fontSize: 20 }}>
+            {name}
+            {s.age ? `, ${s.age}` : ''}
+          </T>
+          {mint ? (
+            <Row gap={4}>
+              <Icon name="check" size={12} color={Colors.onAccent} />
+              <T variant="caption" color={Colors.onAccent} style={{ fontWeight: '700' }}>
+                Free when you are
+              </T>
+            </Row>
+          ) : null}
+        </View>
+        <Row gap={4} style={{ backgroundColor: mint ? 'rgba(20,20,20,0.08)' : Colors.surfaceRaised, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+          <Icon name="nearMe" size={12} color={ink} />
+          <T variant="caption" color={ink} style={{ fontWeight: '700' }}>
+            {s.distance_km <= 1 ? '< 1 km' : `${s.distance_km} km`}
+          </T>
+        </Row>
       </Row>
 
-      <View style={{ gap: 4 }}>
-        <T variant="title" color={ink} style={{ fontSize: 26, lineHeight: 30 }}>
+      <View style={{ height: 1, backgroundColor: mint ? 'rgba(20,20,20,0.1)' : Colors.hairline }} />
+
+      {/* Key info */}
+      <InfoRow icon="clock" color={ink}>
+        <T variant="heading" color={ink}>
           {formatDay(s.starts_at)}, {span(s.starts_at, s.ends_at)}
         </T>
-        {s.note ? (
+      </InfoRow>
+      {s.note ? (
+        <InfoRow icon="quote" color={ink}>
           <T variant="body" color={ink}>
-            “{s.note}”
+            {s.note}
           </T>
-        ) : null}
-        {s.shared_interests.length ? (
-          <T variant="body" color={soft}>
-            You both like {joinWords(s.shared_interests.map((i) => i.toLowerCase()))}
+        </InfoRow>
+      ) : null}
+      {s.shared_interests.length ? (
+        <InfoRow icon="sparkle" color={ink}>
+          <T variant="caption" color={soft}>
+            You both like
           </T>
-        ) : null}
-      </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {s.shared_interests.map((i) => (
+              <Pill key={i} label={i} strong />
+            ))}
+          </View>
+        </InfoRow>
+      ) : null}
 
+      {/* Details */}
       {open ? (
-        <Animated.View entering={FadeIn.duration(180)} style={{ gap: 6 }}>
-          {details.map((d) => (
-            <T key={d} variant="body" color={soft}>
-              {d}
-            </T>
-          ))}
-          <Pressable onPress={onBlock} hitSlop={8} style={{ marginTop: 4 }}>
-            <T variant="label" color={soft} style={{ textDecorationLine: 'underline' }}>
-              Block {name}
-            </T>
+        <Animated.View entering={FadeIn.duration(180)} style={{ gap: 14 }}>
+          <View style={{ height: 1, backgroundColor: mint ? 'rgba(20,20,20,0.1)' : Colors.hairline }} />
+          {identity ? (
+            <InfoRow icon="personSmall" color={ink}>
+              <T variant="body" color={ink}>
+                {identity}
+              </T>
+            </InfoRow>
+          ) : null}
+          {s.looking_for.length ? (
+            <InfoRow icon="target" color={ink}>
+              <T variant="caption" color={soft}>
+                Looking for
+              </T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {s.looking_for.map((k) => (
+                  <Pill key={k} label={labelOf(LOOKING_FOR, k)} onMint={mint} />
+                ))}
+              </View>
+            </InfoRow>
+          ) : null}
+          {others.length ? (
+            <InfoRow icon="tag" color={ink}>
+              <T variant="caption" color={soft}>
+                Also into
+              </T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {others.map((i) => (
+                  <Pill key={i} label={i} onMint={mint} />
+                ))}
+              </View>
+            </InfoRow>
+          ) : null}
+          <Pressable onPress={onBlock} hitSlop={8}>
+            <Row gap={8}>
+              <Icon name="block" size={14} color={soft} />
+              <T variant="label" color={soft}>
+                Block {name}
+              </T>
+            </Row>
           </Pressable>
         </Animated.View>
       ) : null}
 
-      <Row style={{ justifyContent: 'space-between' }}>
+      {/* Actions */}
+      <Row style={{ justifyContent: 'space-between', marginTop: 2 }}>
         {requested ? (
-          <T variant="label" color={soft}>
-            {s.my_request === 'accepted' ? 'They said yes! 🎉' : 'Request sent'}
-          </T>
+          <Row gap={6}>
+            <Icon name="check" size={14} color={soft} />
+            <T variant="label" color={soft}>
+              {s.my_request === 'accepted' ? 'They said yes!' : 'Request sent'}
+            </T>
+          </Row>
         ) : s.my_request === 'declined' ? (
           <T variant="label" color={soft}>
             Not this time
           </T>
         ) : (
-          <Button title="Ask to hang out" onPress={onRequest} />
+          <Button title="Ask to hang out" icon="hand" onPress={onRequest} />
         )}
         <Pressable onPress={() => setOpen((v) => !v)} hitSlop={10}>
-          <T variant="label" color={soft} style={{ textDecorationLine: 'underline' }}>
-            {open ? 'Less' : `More about ${name}`}
-          </T>
+          <Row gap={4}>
+            <T variant="label" color={soft}>
+              {open ? 'Less' : 'More'}
+            </T>
+            <Icon name={open ? 'close' : 'chevron'} size={12} color={soft} />
+          </Row>
         </Pressable>
       </Row>
     </View>
@@ -325,23 +413,38 @@ export default function PublicScreen() {
         <Animated.View entering={FadeIn} style={{ gap: Spacing.lg }}>
           <T variant="title">{incoming.length === 1 ? 'Someone wants to hang out!' : `${incoming.length} people want to hang out!`}</T>
           {incoming.map((r) => (
-            <View key={r.id} style={{ backgroundColor: Colors.accent, borderRadius: 26, padding: 18, gap: Spacing.md }}>
+            <View key={r.id} style={{ backgroundColor: Colors.accent, borderRadius: 28, padding: 18, gap: 14 }}>
               <Row gap={Spacing.md}>
                 <Avatar profile={r.other} size={48} />
-                <View style={{ flex: 1 }}>
-                  <T variant="heading" color={Colors.onAccent}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T variant="heading" color={Colors.onAccent} style={{ fontSize: 20 }}>
                     {displayName(r.other).split(' ')[0]}
                   </T>
-                  {r.slot ? (
-                    <T variant="body" color={Colors.onAccent}>
-                      For your time {formatDay(r.slot.starts_at) === 'Today' || formatDay(r.slot.starts_at) === 'Tomorrow' ? formatDay(r.slot.starts_at).toLowerCase() : `on ${formatDay(r.slot.starts_at)}`}, {span(r.slot.starts_at, r.slot.ends_at)}
+                  <Row gap={4}>
+                    <Icon name="hand" size={12} color={Colors.onAccent} />
+                    <T variant="caption" color={Colors.onAccent} style={{ fontWeight: '700' }}>
+                      Wants to hang out
                     </T>
-                  ) : null}
+                  </Row>
                 </View>
               </Row>
-              {r.message ? <T variant="body" color={Colors.onAccent}>“{r.message}”</T> : null}
-              <Row gap={Spacing.md}>
-                <Button title="Say yes" variant="white" onPress={() => run(() => answerRequest(r.id, 'accepted'))} />
+              <View style={{ height: 1, backgroundColor: 'rgba(20,20,20,0.1)' }} />
+              {r.slot ? (
+                <InfoRow icon="clock" color={Colors.onAccent}>
+                  <T variant="heading" color={Colors.onAccent}>
+                    {formatDay(r.slot.starts_at)}, {span(r.slot.starts_at, r.slot.ends_at)}
+                  </T>
+                </InfoRow>
+              ) : null}
+              {r.message ? (
+                <InfoRow icon="quote" color={Colors.onAccent}>
+                  <T variant="body" color={Colors.onAccent}>
+                    {r.message}
+                  </T>
+                </InfoRow>
+              ) : null}
+              <Row gap={Spacing.md} style={{ marginTop: 2 }}>
+                <Button title="Say yes" icon="check" variant="white" onPress={() => run(() => answerRequest(r.id, 'accepted'))} />
                 <Button title="No thanks" variant="ghost" onPress={() => run(() => answerRequest(r.id, 'declined'))} />
               </Row>
             </View>
