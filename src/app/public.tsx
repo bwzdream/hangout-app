@@ -27,12 +27,15 @@ import {
   getHangoutRequests,
   getMyPublicSlots,
   getPublicStatus,
-  goPublic,
   minutesLabel,
   nearbySlots,
   sendHangoutRequest,
   setRadius,
   stopPublic,
+  GENDERS,
+  LOOKING_FOR,
+  SEXUALITIES,
+  labelOf,
   type NearbySlot,
 } from '@/lib/public';
 import { DAY_MS, formatDay, formatTime } from '@/lib/time';
@@ -69,8 +72,7 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
   );
 }
 
-function Intro({ onDone }: { onDone: () => void }) {
-  const [busy, setBusy] = useState(false);
+function Intro() {
   return (
     <Screen edges={['bottom']}>
       <View style={{ alignItems: 'center' }}>
@@ -83,9 +85,9 @@ function Intro({ onDone }: { onDone: () => void }) {
         </T>
       </View>
       <View style={{ gap: Spacing.xl }}>
-        <Step n={1} title="Share a bit of free time" body="Pick when you're free. Free accounts can share up to 2 hours a day." />
-        <Step n={2} title="See who's free near you" body="People within a few kilometers who are free at the same time show up first." />
-        <Step n={3} title="Ask to hang out" body="Send a request, or get one. Nothing happens unless you both say yes." />
+        <Step n={1} title="Tell us about you" body="Your age, what you're into, and what you're looking for: friends, an activity buddy, dating or networking." />
+        <Step n={2} title="Share a bit of free time" body="Pick when you're free. Free accounts can share up to 2 hours a day." />
+        <Step n={3} title="Meet people who fit" body="See people nearby who fit what you want (and you fit theirs), free at the same time. Ask to hang out; nothing happens unless you both say yes." />
       </View>
       <View style={{ backgroundColor: Colors.surface, borderRadius: 20, padding: 16, gap: 6 }}>
         <Row gap={8}>
@@ -93,26 +95,14 @@ function Intro({ onDone }: { onDone: () => void }) {
           <T variant="label">Your privacy</T>
         </Row>
         <T variant="caption">
-          Others only see your first name, photo, rough distance (like “about 3 km”) and the times you share. Your exact location is never shown. You can block anyone, and stop being public anytime.
+          Others see your first name, age, interests, what you’re looking for, a rough distance (like “about 3 km”) and the times you share. Your exact location and birthday are never shown. You can block anyone, and stop being public anytime.
         </T>
       </View>
-      <PopButton
-        disabled={busy}
-        onPress={async () => {
-          setBusy(true);
-          try {
-            await goPublic();
-            onDone();
-          } catch (e) {
-            notify('Couldn’t turn this on', errorMessage(e));
-          } finally {
-            setBusy(false);
-          }
-        }}>
+      <PopButton onPress={() => router.push({ pathname: '/public-profile', params: { setup: '1' } })}>
         <Row style={{ padding: 18, justifyContent: 'center' }} gap={10}>
           <Icon name="pin" size={20} color={Colors.onAccent} />
           <T variant="button" color={Colors.onAccent}>
-            {busy ? 'Finding your area…' : 'Go public'}
+            Set up my public profile
           </T>
         </Row>
       </PopButton>
@@ -156,9 +146,18 @@ function PersonCard({ s, onRequest, onBlock }: { s: NearbySlot; onRequest: () =>
       <Row gap={Spacing.md}>
         <Avatar profile={asProfile(s)} size={52} />
         <View style={{ flex: 1 }}>
-          <T variant="heading">{(s.display_name || s.username).split(' ')[0]}</T>
+          <T variant="heading">
+            {(s.display_name || s.username).split(' ')[0]}
+            {s.age ? `, ${s.age}` : ''}
+          </T>
           <T variant="caption" color={s.overlaps_mine ? Colors.onAccent : Colors.textSecondary}>
-            {s.distance_km <= 1 ? 'Less than 1 km away' : `About ${s.distance_km} km away`}
+            {[
+              s.distance_km <= 1 ? 'Less than 1 km away' : `About ${s.distance_km} km away`,
+              labelOf(GENDERS, s.gender),
+              labelOf(SEXUALITIES, s.sexuality),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </T>
         </View>
         <Pressable onPress={onBlock} hitSlop={10} accessibilityLabel="Block">
@@ -182,6 +181,32 @@ function PersonCard({ s, onRequest, onBlock }: { s: NearbySlot; onRequest: () =>
           </T>
         ) : null}
       </View>
+      {s.looking_for.length ? (
+        <T variant="body" color={s.overlaps_mine ? Colors.onAccent : Colors.text}>
+          Looking for: {s.looking_for.map((k) => labelOf(LOOKING_FOR, k).toLowerCase()).join(', ')}
+        </T>
+      ) : null}
+      {s.interests.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {[...s.shared_interests, ...s.interests.filter((i) => !s.shared_interests.includes(i))].slice(0, 6).map((i) => {
+            const shared = s.shared_interests.includes(i);
+            return (
+              <View
+                key={i}
+                style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  backgroundColor: shared ? Colors.text : s.overlaps_mine ? 'rgba(20,20,20,0.08)' : Colors.surfaceRaised,
+                }}>
+                <T variant="caption" color={shared ? Colors.background : Colors.text} style={{ fontWeight: shared ? '700' : '500' }}>
+                  {shared ? `✓ ${i}` : i}
+                </T>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
       {requested ? (
         <T variant="label" color={s.overlaps_mine ? Colors.onAccent : Colors.textSecondary}>
           {s.my_request === 'accepted' ? 'They said yes! 🎉' : 'Request sent'}
@@ -215,7 +240,7 @@ export default function PublicScreen() {
   });
 
   if (loading && !data) return <Loading />;
-  if (!data?.status.enabled) return <Intro onDone={reload} />;
+  if (!data?.status.enabled) return <Intro />;
 
   const { status, mine, nearby, requests } = data;
   const incoming = requests.incoming.filter((r) => r.status === 'pending');
@@ -350,7 +375,7 @@ export default function PublicScreen() {
         <View style={{ gap: 4 }}>
           <T variant="title">Free near you</T>
           <T variant="body" color={Colors.textSecondary}>
-            People within {status.radiusKm} km who are also public. Ones free when you are come first.
+            People within {status.radiusKm} km who fit what you’re looking for (and you fit theirs). Free at the same time and shared interests come first.
           </T>
         </View>
         {nearby.length === 0 ? (
@@ -376,7 +401,17 @@ export default function PublicScreen() {
 
       {/* Settings */}
       <View style={{ gap: Spacing.md }}>
-        <T variant="label">How far to look</T>
+        <Pressable onPress={() => router.push('/public-profile')} hitSlop={8}>
+          <Row gap={8}>
+            <Icon name="edit" size={16} />
+            <T variant="label" style={{ textDecorationLine: 'underline' }}>
+              Edit my public profile and who I’d like to meet
+            </T>
+          </Row>
+        </Pressable>
+        <T variant="label" style={{ marginTop: Spacing.sm }}>
+          How far to look
+        </T>
         <Row gap={8}>
           {RADII.map((r) => (
             <Chip key={r} label={`${r} km`} selected={status.radiusKm === r} onPress={() => run(() => setRadius(r))} />

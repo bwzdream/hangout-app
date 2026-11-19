@@ -156,7 +156,9 @@ console.log('✓ contact matching: hashed emails/phones match, never yourself, n
 // ── Public mode ──
 const tomorrow = `(date_trunc('day', now()) + interval '1 day 18 hours')`;
 assert.ok(await fails(C, `insert into public_slots (user_id, starts_at, ends_at) values ('${C}', ${tomorrow}, ${tomorrow} + interval '1 hour')`), 'must be public to post');
-await as(A, `insert into public_profiles (user_id, lat, lng, radius_km) values ('${A}', 37.774929, -122.419416, 10)`);
+assert.ok(await fails(A, `insert into public_profiles (user_id, lat, lng) values ('${A}', 37.77, -122.42)`), 'needs a birthdate');
+assert.ok(await fails(A, `insert into public_profiles (user_id, lat, lng, birthdate) values ('${A}', 37.77, -122.42, current_date - interval '17 years')`), 'must be 18+');
+await as(A, `insert into public_profiles (user_id, lat, lng, radius_km, birthdate, gender, interests, looking_for) values ('${A}', 37.774929, -122.419416, 10, current_date - interval '30 years', 'man', '{hiking,coffee,games}', '{friends,activity}')`);
 assert.deepEqual((await as(A, `select lat::text, lng::text from public_profiles`))[0], { lat: '37.77', lng: '-122.42' });
 await as(A, `insert into public_slots (user_id, starts_at, ends_at, note) values ('${A}', ${tomorrow}, ${tomorrow} + interval '90 minutes', 'Tacos?')`);
 assert.ok(await fails(A, `insert into public_slots (user_id, starts_at, ends_at) values ('${A}', ${tomorrow} + interval '3 hours', ${tomorrow} + interval '3 hours 45 minutes')`), '2h/day limit');
@@ -169,8 +171,8 @@ await db.exec(`delete from entitlements`);
 console.log('✓ public mode: must opt in, location rounded, 2h/day limit, plus plan unlimited');
 
 assert.equal((await as(B, `select * from nearby_public_slots(now(), now() + interval '7 days')`)).length, 0, 'not public → sees nothing');
-await as(C, `insert into public_profiles (user_id, lat, lng) values ('${C}', 37.78, -122.41)`);
-await as(B, `insert into public_profiles (user_id, lat, lng) values ('${B}', 40.71, -74.00)`);
+await as(C, `insert into public_profiles (user_id, lat, lng, birthdate, gender, sexuality, show_sexuality, interests, looking_for) values ('${C}', 37.78, -122.41, current_date - interval '28 years', 'woman', 'bisexual', true, '{coffee,music,games}', '{friends}')`);
+await as(B, `insert into public_profiles (user_id, lat, lng, birthdate) values ('${B}', 40.71, -74.00, current_date - interval '40 years')`);
 await as(C, `insert into public_slots (user_id, starts_at, ends_at) values ('${C}', ${tomorrow} + interval '30 minutes', ${tomorrow} + interval '2 hours')`);
 let near = await as(C, `select user_id, note, distance_km, overlaps_mine from nearby_public_slots(now(), now() + interval '7 days') order by starts_at`);
 assert.ok(near.length >= 3 && near.every((r) => r.user_id === A), 'sees nearby A only');
@@ -180,6 +182,28 @@ assert.ok(near[0].distance_km <= 2);
 assert.equal((await as(B, `select * from nearby_public_slots(now(), now() + interval '7 days')`)).length, 0, 'far away → nothing');
 assert.equal((await as(C, `select * from public_slots where user_id = '${A}'`)).length, 0, 'no direct reading of others slots');
 console.log('✓ nearby: only public people within radius, overlap flagged, no direct table access');
+
+// Mutual matching
+const nearA = async () => (await as(C, `select age, gender, sexuality, shared_interests from nearby_public_slots(now(), now() + interval '7 days')`));
+let matchRows = await nearA();
+assert.equal(matchRows[0].age, 30);
+assert.deepEqual([...matchRows[0].shared_interests].sort(), ["coffee", "games"]);
+assert.equal(matchRows[0].sexuality, null, 'A did not choose to show sexuality');
+const cSeesA = await as(A, `select sexuality from nearby_public_slots(now(), now() + interval '7 days')`);
+assert.equal(cSeesA[0].sexuality, 'bisexual', 'shown when chosen');
+await as(C, `update public_profiles set pref_genders = '{woman}' where user_id = '${C}'`);
+assert.equal((await nearA()).length, 0, 'C only wants to meet women → A hidden');
+assert.equal((await as(A, `select * from nearby_public_slots(now(), now() + interval '7 days')`)).length, 0, 'and hidden both ways');
+await as(C, `update public_profiles set pref_genders = '{}' where user_id = '${C}'`);
+await as(A, `update public_profiles set pref_age_min = 35 where user_id = '${A}'`);
+assert.equal((await nearA()).length, 0, 'C (28) is outside A’s age range → hidden for C too');
+await as(A, `update public_profiles set pref_age_min = 18 where user_id = '${A}'`);
+await as(C, `update public_profiles set looking_for = '{dating}' where user_id = '${C}'`);
+assert.equal((await nearA()).length, 0, 'dating vs friends/activity → no match');
+await as(A, `update public_profiles set looking_for = '{friends,dating}' where user_id = '${A}'`);
+assert.ok((await nearA()).length > 0, 'both want dating → match');
+await as(C, `update public_profiles set looking_for = '{friends}' where user_id = '${C}'`);
+console.log('✓ matching: age, gender and looking-for apply both ways; shared interests; sexuality only if shown; 18+ only');
 
 const [slot] = await as(A, `select id from public_slots where note = 'Tacos?'`);
 await as(C, `insert into hangout_requests (from_user, to_user, slot_id, message) values ('${C}', '${C}', '${slot.id}', 'Down!')`);

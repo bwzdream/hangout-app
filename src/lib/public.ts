@@ -12,8 +12,73 @@ import type { Profile } from './types';
 
 export const FREE_PUBLIC_MINUTES = 120;
 
+// ── Profile options ──
+export const GENDERS = [
+  { key: 'woman', label: 'Woman' },
+  { key: 'man', label: 'Man' },
+  { key: 'nonbinary', label: 'Non-binary' },
+  { key: 'another', label: 'Another identity' },
+] as const;
+export const SEXUALITIES = [
+  { key: 'straight', label: 'Straight' },
+  { key: 'gay', label: 'Gay' },
+  { key: 'lesbian', label: 'Lesbian' },
+  { key: 'bisexual', label: 'Bisexual' },
+  { key: 'pansexual', label: 'Pansexual' },
+  { key: 'queer', label: 'Queer' },
+  { key: 'asexual', label: 'Asexual' },
+  { key: 'questioning', label: 'Questioning' },
+] as const;
+export const LOOKING_FOR = [
+  { key: 'friends', label: 'New friends' },
+  { key: 'activity', label: 'Activity buddy' },
+  { key: 'dating', label: 'Dating' },
+  { key: 'networking', label: 'Networking' },
+] as const;
+export const INTERESTS = [
+  'Food & drinks', 'Coffee', 'Hiking', 'Fitness', 'Running', 'Music', 'Live shows', 'Art', 'Movies', 'Games',
+  'Board games', 'Books', 'Sports', 'Dancing', 'Travel', 'Tech', 'Photography', 'Pets', 'Outdoors', 'Nightlife',
+] as const;
+export const labelOf = (list: readonly { key: string; label: string }[], key: string | null | undefined) =>
+  list.find((x) => x.key === key)?.label ?? '';
+
+export type PublicProfile = {
+  birthdate: string | null; // YYYY-MM-DD
+  gender: string | null;
+  sexuality: string | null;
+  show_sexuality: boolean;
+  interests: string[];
+  looking_for: string[];
+  pref_age_min: number;
+  pref_age_max: number;
+  pref_genders: string[];
+};
+
+export const EMPTY_PUBLIC_PROFILE: PublicProfile = {
+  birthdate: null,
+  gender: null,
+  sexuality: null,
+  show_sexuality: false,
+  interests: [],
+  looking_for: [],
+  pref_age_min: 18,
+  pref_age_max: 99,
+  pref_genders: [],
+};
+
+export function ageFrom(birthdate: string | null): number | null {
+  if (!birthdate) return null;
+  const b = new Date(`${birthdate}T12:00:00`);
+  if (Number.isNaN(b.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
 export type PublicStatus = {
   enabled: boolean;
+  hasProfile: boolean;
   hasLocation: boolean;
   radiusKm: number;
   usedMinutes: number;
@@ -35,6 +100,12 @@ export type NearbySlot = {
   distance_km: number;
   overlaps_mine: boolean;
   my_request: 'pending' | 'accepted' | 'declined' | 'cancelled' | null;
+  age: number | null;
+  gender: string | null;
+  sexuality: string | null;
+  interests: string[];
+  looking_for: string[];
+  shared_interests: string[];
 };
 
 export type HangoutRequest = {
@@ -74,7 +145,31 @@ export async function getPublicStatus(dayOf: number = Date.now()): Promise<Publi
     radiusKm: row.radius_km ?? 10,
     usedMinutes: row.used_minutes ?? 0,
     limitMinutes: row.limit_minutes ?? null,
+    hasProfile: !!row.has_profile,
   };
+}
+
+export async function getPublicProfile(): Promise<PublicProfile> {
+  const me = await uid();
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('birthdate, gender, sexuality, show_sexuality, interests, looking_for, pref_age_min, pref_age_max, pref_genders')
+    .eq('user_id', me)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return { ...EMPTY_PUBLIC_PROFILE, ...(data ?? {}) } as PublicProfile;
+}
+
+/** Save the public profile. If not public yet, this also turns public mode on (asks for location). */
+export async function savePublicProfile(profile: PublicProfile, turnOn: boolean) {
+  const me = await uid();
+  const loc = turnOn ? await getRoughLocation() : null;
+  const row = { user_id: me, ...profile, ...(loc ? { lat: loc.lat, lng: loc.lng, enabled: true } : {}) };
+  const { error } = await supabase.from('public_profiles').upsert(row);
+  if (error) {
+    if (error.message.includes('must_be_18')) throw new Error('You need to be 18 or older to meet people nearby.');
+    throw new Error(error.message);
+  }
 }
 
 /** Rough location (the server rounds again to ~1 km). Web uses the browser's location. */
@@ -95,13 +190,6 @@ export async function getRoughLocation(): Promise<{ lat: number; lng: number }> 
     (await Location.getLastKnownPositionAsync({ maxAge: 30 * 60000 })) ??
     (await Location.getCurrentPositionAsync({ accuracy: LocationAccuracy.Low }));
   return { lat: +pos.coords.latitude.toFixed(2), lng: +pos.coords.longitude.toFixed(2) };
-}
-
-export async function goPublic(radiusKm = 10) {
-  const me = await uid();
-  const { lat, lng } = await getRoughLocation();
-  const { error } = await supabase.from('public_profiles').upsert({ user_id: me, enabled: true, lat, lng, radius_km: radiusKm });
-  if (error) throw new Error(error.message);
 }
 
 export async function refreshLocation() {
