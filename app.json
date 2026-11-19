@@ -58,6 +58,12 @@
         {
           "contactsPermission": "Pingle checks your contacts so you can see which friends are already here and invite the rest. Your contacts are never uploaded."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pingle uses your rough location (about 1 km) to show people nearby who are free at the same time. Your exact location is never shared."
+        }
       ]
     ],
     "experiments": {

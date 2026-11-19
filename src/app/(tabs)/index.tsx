@@ -6,6 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { ActivityCard } from '@/components/cards';
 import { FreeTimeline } from '@/components/free-timeline';
+import { NearbyCard } from '@/components/nearby-card';
 import { Button, Chip, Loading, Row, Screen, T } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { useData } from '@/hooks/use-data';
@@ -16,6 +17,7 @@ import { DAY_MS, formatTime } from '@/lib/time';
 import type { Profile } from '@/lib/types';
 import { dayStart } from '@/lib/when';
 import { WELCOME_KEY } from '@/lib/onboarding';
+import { getPublicStatus } from '@/lib/public';
 import { useAuth } from '@/providers/auth';
 
 const span = (w: Interval) => `${formatTime(w.start)} – ${formatTime(w.end)}`;
@@ -38,7 +40,10 @@ export default function Home() {
     const memberIds = activities.flatMap((a) => [a.host_id, ...a.members.map((m) => m.user_id)]);
     const profiles = { ...(await getProfiles(memberIds)), ...Object.fromEntries(friends.friends.map((f) => [f.id, f])) };
     if (profile) profiles[profile.id] = profile;
-    return { friends: friends.friends, pings, activities, availability, profiles, hasRoutine: rules.length > 0 };
+    const publicOn = await getPublicStatus()
+      .then((st) => st.enabled)
+      .catch(() => false);
+    return { friends: friends.friends, pings, activities, availability, profiles, hasRoutine: rules.length > 0, publicOn };
   });
 
   // First time here and nothing set up yet? Show the short welcome.
@@ -180,7 +185,10 @@ export default function Home() {
         ) : null}
       </Animated.View>
 
-      {/* 3. Next plan */}
+      {/* 3. Meet people nearby */}
+      {data ? <NearbyCard enabled={data.publicOn} /> : null}
+
+      {/* 4. Next plan */}
       {nextPlan && data ? (
         <View style={{ gap: Spacing.md }}>
           <T variant="title">Your next hangout</T>

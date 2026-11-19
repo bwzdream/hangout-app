@@ -153,4 +153,54 @@ assert.deepEqual(m, [{ id: A, kind: 'phone', verified: false }]);
 assert.equal((await as(B, `select * from contact_hashes`)).length, 1, 'cannot read other users hashes');
 console.log('✓ contact matching: hashed emails/phones match, never yourself, no reading others, no claiming emails');
 
+// ── Public mode ──
+const tomorrow = `(date_trunc('day', now()) + interval '1 day 18 hours')`;
+assert.ok(await fails(C, `insert into public_slots (user_id, starts_at, ends_at) values ('${C}', ${tomorrow}, ${tomorrow} + interval '1 hour')`), 'must be public to post');
+await as(A, `insert into public_profiles (user_id, lat, lng, radius_km) values ('${A}', 37.774929, -122.419416, 10)`);
+assert.deepEqual((await as(A, `select lat::text, lng::text from public_profiles`))[0], { lat: '37.77', lng: '-122.42' });
+await as(A, `insert into public_slots (user_id, starts_at, ends_at, note) values ('${A}', ${tomorrow}, ${tomorrow} + interval '90 minutes', 'Tacos?')`);
+assert.ok(await fails(A, `insert into public_slots (user_id, starts_at, ends_at) values ('${A}', ${tomorrow} + interval '3 hours', ${tomorrow} + interval '3 hours 45 minutes')`), '2h/day limit');
+await as(A, `insert into public_slots (user_id, starts_at, ends_at) values ('${A}', ${tomorrow} + interval '3 hours', ${tomorrow} + interval '3 hours 30 minutes')`);
+assert.equal((await as(A, `select used_minutes, limit_minutes from my_public_status(${tomorrow})`))[0].used_minutes, 120);
+await db.exec(`insert into entitlements (user_id, plan) values ('${A}', 'plus')`);
+await as(A, `insert into public_slots (user_id, starts_at, ends_at) values ('${A}', ${tomorrow} + interval '4 hours', ${tomorrow} + interval '5 hours')`);
+assert.equal((await as(A, `select limit_minutes from my_public_status()`))[0].limit_minutes, null);
+await db.exec(`delete from entitlements`);
+console.log('✓ public mode: must opt in, location rounded, 2h/day limit, plus plan unlimited');
+
+assert.equal((await as(B, `select * from nearby_public_slots(now(), now() + interval '7 days')`)).length, 0, 'not public → sees nothing');
+await as(C, `insert into public_profiles (user_id, lat, lng) values ('${C}', 37.78, -122.41)`);
+await as(B, `insert into public_profiles (user_id, lat, lng) values ('${B}', 40.71, -74.00)`);
+await as(C, `insert into public_slots (user_id, starts_at, ends_at) values ('${C}', ${tomorrow} + interval '30 minutes', ${tomorrow} + interval '2 hours')`);
+let near = await as(C, `select user_id, note, distance_km, overlaps_mine from nearby_public_slots(now(), now() + interval '7 days') order by starts_at`);
+assert.ok(near.length >= 3 && near.every((r) => r.user_id === A), 'sees nearby A only');
+assert.equal(near[0].note, 'Tacos?');
+assert.equal(near[0].overlaps_mine, true);
+assert.ok(near[0].distance_km <= 2);
+assert.equal((await as(B, `select * from nearby_public_slots(now(), now() + interval '7 days')`)).length, 0, 'far away → nothing');
+assert.equal((await as(C, `select * from public_slots where user_id = '${A}'`)).length, 0, 'no direct reading of others slots');
+console.log('✓ nearby: only public people within radius, overlap flagged, no direct table access');
+
+const [slot] = await as(A, `select id from public_slots where note = 'Tacos?'`);
+await as(C, `insert into hangout_requests (from_user, to_user, slot_id, message) values ('${C}', '${C}', '${slot.id}', 'Down!')`);
+const [req] = await as(A, `select id, to_user, from_user, status from hangout_requests`);
+assert.equal(req.to_user, A, 'recipient filled from slot');
+assert.ok(await fails(C, `update hangout_requests set status = 'accepted' where id = '${req.id}'`), 'sender cannot accept');
+await as(A, `update hangout_requests set status = 'accepted' where id = '${req.id}'`);
+const [acc] = await as(C, `select status, activity_id from hangout_requests where id = '${req.id}'`);
+assert.equal(acc.status, 'accepted');
+assert.ok(acc.activity_id, 'hangout created');
+assert.equal((await as(C, `select title from activities where id = '${acc.activity_id}'`))[0].title, 'Tacos?');
+assert.equal((await as(A, `select count(*)::int as n from activity_members where activity_id = '${acc.activity_id}'`))[0].n, 2);
+assert.ok(await fails(A, `update hangout_requests set status = 'declined' where id = '${req.id}'`), 'cannot re-answer');
+assert.equal((await as(C, `select note from my_hangout_requests()`))[0].note, 'Tacos?', 'sender sees slot time via my_hangout_requests');
+assert.equal((await as(B, `select * from my_hangout_requests()`)).length, 0, 'others see nothing');
+console.log('✓ requests: recipient answers, accept creates a private hangout for both');
+
+await as(A, `insert into blocks (blocker_id, blocked_id) values ('${A}', '${C}')`);
+assert.equal((await as(C, `select * from nearby_public_slots(now(), now() + interval '7 days')`)).length, 0, 'blocked → hidden');
+const [slot2] = await as(A, `select id from public_slots where note = '' order by starts_at limit 1`);
+assert.ok(await fails(C, `insert into hangout_requests (from_user, to_user, slot_id) values ('${C}', '${A}', '${slot2.id}')`), 'blocked → cannot request');
+console.log('✓ blocking hides people and stops requests');
+
 console.log('\nAll RLS checks passed 🎉');
